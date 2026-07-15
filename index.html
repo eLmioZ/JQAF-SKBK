@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PELAPORAN JQAF SK BUKIT KALLAM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Montserrat', sans-serif; }
+    </style>
+</head>
+<body class="bg-blue-50 flex flex-col min-h-screen">
+
+
+    <header class="bg-blue-800 text-white p-6 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight">PELAPORAN JQAF SK BUKIT KALLAM</h1>
+                <p class="text-blue-200 text-sm">Sistem Pemantauan Data JQAF</p>
+            </div>
+            <button onclick="toggleAdmin()" class="bg-white text-blue-800 font-semibold px-5 py-2 rounded-full shadow hover:bg-blue-50 transition duration-300">
+                Panel Pentadbir
+            </button>
+        </div>
+    </header>
+
+
+    <nav class="bg-blue-700 shadow-md py-3">
+        <div class="container mx-auto px-4 flex flex-wrap justify-center gap-4 text-sm font-medium text-blue-100 items-center">
+            <button onclick="changeView('Utama')" class="hover:text-white transition">UTAMA</button>
+            <button onclick="changeView('Tasmik')" class="hover:text-white transition">DATA TASMIK</button>
+            <button onclick="changeView('Jawi')" class="hover:text-white transition">DATA JAWI</button>
+            <button onclick="changeView('Solat')" class="hover:text-white transition">DATA SOLAT</button>
+            <button onclick="changeView('Tahun6')" class="bg-blue-900 text-white px-4 py-1.5 rounded-lg shadow-inner font-bold transition">DATA FOKUS TAHUN 6</button>
+            <button onclick="changeView('Pelaporan')" class="bg-amber-500 text-white px-4 py-1.5 rounded-lg shadow-inner font-bold transition">PELAPORAN KESELURUHAN</button>
+        </div>
+    </nav>
+
+
+    <div id="adminPanel" class="fixed inset-0 bg-blue-900 bg-opacity-70 hidden flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div id="adminPanelContent" class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-5xl transition-all max-h-[90vh] overflow-y-auto">
+        </div>
+    </div>
+
+
+    <main class="container mx-auto p-4 md:p-6 flex-grow">
+        <div id="hebahan-section" class="bg-white rounded-xl shadow-md p-5 border-l-8 border-amber-500 mb-6">
+            <h2 class="text-sm font-bold text-blue-900 mb-2 uppercase tracking-widest">HEBAHAN TERKINI</h2>
+            <div id="display-hebahan" class="space-y-2">
+                <p class="text-blue-700 font-medium italic text-sm">Tiada hebahan terkini.</p>
+            </div>
+        </div>
+
+
+        <h2 id="main-title" class="text-xl font-bold text-blue-900 mb-4 tracking-tight uppercase">STATUS PEREKODAN JQAF</h2>
+        <div id="list-container" class="grid grid-cols-1 gap-6">
+        </div>
+    </main>
+
+
+    <footer class="bg-blue-900 text-blue-300 p-6 text-center text-xs mt-auto">
+        Hak Cipta Terpelihara @ eLmioZ Designer.
+    </footer>
+
+
+    <script>
+        let currentView = 'Utama';
+        let isLoggedIn = false;
+        let editingIndex = -1;
+        let editingT6Index = -1;
+        let classes = JSON.parse(localStorage.getItem('classes') || '[]');
+        let statusKelasData = JSON.parse(localStorage.getItem('statusKelasData') || '[]');
+        let hebahanList = JSON.parse(localStorage.getItem('hebahanList') || '[]');
+        let dataFokusTahun6 = JSON.parse(localStorage.getItem('dataFokusTahun6') || '[]');
+        let pelaporanLinks = JSON.parse(localStorage.getItem('pelaporanLinks') || '[]');
+
+
+        function changeView(view) { currentView = view; renderMainView(); }
+
+
+        function saveData() {
+            localStorage.setItem('classes', JSON.stringify(classes));
+            localStorage.setItem('statusKelasData', JSON.stringify(statusKelasData));
+            localStorage.setItem('hebahanList', JSON.stringify(hebahanList));
+            localStorage.setItem('dataFokusTahun6', JSON.stringify(dataFokusTahun6));
+            localStorage.setItem('pelaporanLinks', JSON.stringify(pelaporanLinks));
+            renderMainView();
+            if(!document.getElementById('adminPanel').classList.contains('hidden')) renderAdminDashboard();
+        }
+
+
+        function toggleAdmin() {
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) {
+                if (!isLoggedIn) {
+                    renderLogin();
+                } else {
+                    editingIndex = -1;
+                    editingT6Index = -1;
+                    renderAdminDashboard();
+                }
+            }
+        }
+
+
+        function renderLogin() {
+            const content = document.getElementById('adminPanelContent');
+            content.innerHTML = `
+                <div class="text-center p-8">
+                    <h2 class="text-2xl font-bold text-blue-900 mb-6">Log Masuk Pentadbir</h2>
+                    <input type="password" id="adminPass" placeholder="Masukkan Kata Laluan" class="w-full max-w-sm p-3 mb-4 border rounded-lg text-center mx-auto block">
+                    <button onclick="checkPassword()" class="w-full max-w-sm bg-blue-800 text-white p-3 rounded-lg font-bold hover:bg-blue-900 mx-auto block">Masuk</button>
+                    <button onclick="toggleAdmin()" class="block w-full text-gray-400 mt-4 text-sm underline">Batal</button>
+                    <p id="passError" class="text-red-500 mt-4 hidden font-bold">Kata laluan salah!</p>
+                </div>
+            `;
+        }
+
+
+        function checkPassword() {
+            const pass = document.getElementById('adminPass').value;
+            if (pass === 'elmioz1234') {
+                isLoggedIn = true;
+                editingIndex = -1;
+                editingT6Index = -1;
+                renderAdminDashboard();
+            } else {
+                document.getElementById('passError').classList.remove('hidden');
+            }
+        }
+
+
+        function renderAdminDashboard() {
+            const content = document.getElementById('adminPanelContent');
+            content.innerHTML = `
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-blue-900">Panel Pentadbir</h2>
+                    <div class="flex gap-2">
+                        <button onclick="isLoggedIn = false; toggleAdmin();" class="text-red-600 hover:text-red-800 font-bold text-sm">Log Keluar</button>
+                        <button onclick="toggleAdmin()" class="text-gray-500 hover:text-gray-800 font-bold">Tutup X</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- ... existing code ... -->
+                    <div class="border p-4 rounded-xl">
+                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">1. PENGURUSAN KELAS</h3>
+                        <input type="text" id="cName" placeholder="Nama Kelas" class="w-full p-2 mb-2 border rounded text-sm">
+                        <select id="cAction" class="w-full p-2 mb-2 border rounded text-sm"><option>Belum ada tindakan</option><option>Sedang ditaksir</option><option>Telah ditaksir</option></select>
+                        <select id="cData" class="w-full p-2 mb-2 border rounded text-sm"><option>Perekodan 1</option><option>Perekodan 2</option><option>Perekodan 3</option></select>
+                        <button onclick="addClass()" class="w-full bg-blue-800 text-white p-2 rounded text-sm font-bold">Simpan Kelas</button>
+                        <div class="mt-4 space-y-1">${classes.map((item, i) => renderAdminItem(item.name + ' (' + item.action + ')', i, 'classes')).join('')}</div>
+                    </div>
+                   
+                    <div class="border p-4 rounded-xl">
+                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">2. STATUS KELAS</h3>
+                        <input type="text" id="sKelas" placeholder="Nama Kelas" class="w-full p-2 mb-2 border rounded text-sm">
+                        <input type="number" id="sBilMurid" placeholder="Bilangan Murid" class="w-full p-2 mb-2 border rounded text-sm">
+                        <input type="text" id="sGuru" placeholder="Nama Guru" class="w-full p-2 mb-2 border rounded text-sm">
+                        <select id="sData" class="w-full p-2 mb-2 border rounded text-sm"><option>Perekodan 1</option><option>Perekodan 2</option><option>Perekodan 3</option></select>
+                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border"><p class="font-bold border-b pb-1">DATA TASMIK</p><div class="grid grid-cols-2 gap-2">${[1,2,3,4,5,6].map(i => `<input type="text" id="iqra${i}" placeholder="Iqra ${i}" class="p-1 border rounded">`).join('')}</div><input type="text" id="alquran" placeholder="Al-Quran" class="w-full p-1 border rounded"></div>
+                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border"><p class="font-bold border-b pb-1">DATA JAWI</p><div class="grid grid-cols-3 gap-2">${[1,2,3,4,5,6].map(i => `<input type="text" id="tp${i}" placeholder="TP${i}" class="p-1 border rounded">`).join('')}</div></div>
+                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border"><p class="font-bold border-b pb-1">DATA SOLAT</p>
+                            ${['wudhu', 'perlakuan', 'perbuatan'].map(k => `<div class="grid grid-cols-2 gap-1 mb-1"><span>${k.toUpperCase()}:</span><input type="text" id="${k}M" placeholder="Menguasai" class="p-1 border rounded"><input type="text" id="${k}B" placeholder="Belum" class="p-1 border rounded"></div>`).join('')}
+                        </div>
+                        <button onclick="addStatusEntry()" class="w-full bg-blue-600 text-white p-2 rounded text-sm font-bold">${editingIndex === -1 ? 'Simpan Status' : 'Kemaskini Status'}</button>
+                        <div class="mt-4 space-y-1">${statusKelasData.map((item, i) => renderAdminItem(item.kelas + ' (' + item.data + ')', i, 'statusData')).join('')}</div>
+                    </div>
+
+
+                    <div class="border p-4 rounded-xl md:col-span-2">
+                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">3. DATA FOKUS TAHUN 6 ${editingT6Index !== -1 ? '(MOD EDIT)' : ''}</h3>
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <input type="number" id="cT6JumlahMurid" placeholder="Jumlah Murid" class="p-2 border rounded text-sm">
+                            <input type="number" id="cT6SasaranKhatam" placeholder="Sasaran Khatam" class="p-2 border rounded text-sm">
+                            <input type="number" id="cT6BilKhatam" placeholder="Bil. Khatam" class="p-2 border rounded text-sm">
+                            <input type="text" id="cT6PeratusKhatam" placeholder="Peratus Khatam (%)" class="p-2 border rounded text-sm">
+                            <input type="number" id="cT6BilLemahIqra" placeholder="Bil. Lemah Iqra" class="p-2 border rounded text-sm">
+                            <input type="text" id="cT6PeratusCelikIqra" placeholder="Peratus Celik Iqra (%)" class="p-2 border rounded text-sm">
+                        </div>
+                        <button onclick="addDataTahun6()" class="w-full bg-green-600 text-white p-2 rounded text-sm font-bold mb-4">${editingT6Index === -1 ? 'Simpan Data' : 'Kemaskini Data'}</button>
+                        <div class="space-y-1">${dataFokusTahun6.map((item, i) => renderAdminItem('Data Fokus Tahun 6 - Murid: ' + item.jumlahMurid, i, 'tahun6')).join('')}</div>
+                    </div>
+
+
+                    <div class="border p-4 rounded-xl">
+                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">4. HEBAHAN TERKINI</h3>
+                        <div class="flex gap-2 mb-3"><input type="text" id="hebahanInput" placeholder="Hebahan baru..." class="flex-1 p-2 border rounded text-sm"><button onclick="addHebahan()" class="bg-amber-500 text-white px-4 py-2 rounded text-sm font-bold">Tambah</button></div>
+                        <div class="space-y-1">${hebahanList.map((h, i) => renderAdminItem(h, i, 'hebahanList')).join('')}</div>
+                    </div>
+
+
+                    <div class="border p-4 rounded-xl">
+                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">5. PELAPORAN KESELURUHAN (LINK SHEET)</h3>
+                        <div class="flex gap-2 mb-3">
+                            <select id="pLabel" class="p-2 border rounded text-sm">
+                                <option>Perekodan 1</option>
+                                <option>Perekodan 2</option>
+                                <option>Perekodan 3</option>
+                            </select>
+                            <input type="text" id="pUrl" placeholder="URL Google Sheet" class="flex-1 p-2 border rounded text-sm">
+                            <button onclick="addPelaporan()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Simpan</button>
+                        </div>
+                        <div class="space-y-1">${pelaporanLinks.map((p, i) => renderAdminItem(p.label + ': ' + p.url, i, 'pelaporan')).join('')}</div>
+                    </div>
+                </div>
+            `;
+            if (editingIndex !== -1) fillEditForm();
+            if (editingT6Index !== -1) fillEditT6Form();
+        }
+
+
+        // ... existing helper functions (fillEditT6Form, fillEditForm, addClass, etc.) ...
+        function fillEditT6Form() {
+            const item = dataFokusTahun6[editingT6Index];
+            document.getElementById('cT6JumlahMurid').value = item.jumlahMurid;
+            document.getElementById('cT6SasaranKhatam').value = item.sasaranKhatam;
+            document.getElementById('cT6BilKhatam').value = item.bilKhatam;
+            document.getElementById('cT6PeratusKhatam').value = item.peratusKhatam;
+            document.getElementById('cT6BilLemahIqra').value = item.bilLemahIqra;
+            document.getElementById('cT6PeratusCelikIqra').value = item.peratusCelikIqra;
+        }
+
+
+        function fillEditForm() {
+            const item = statusKelasData[editingIndex];
+            document.getElementById('sKelas').value = item.kelas;
+            document.getElementById('sBilMurid').value = item.bilMurid;
+            document.getElementById('sGuru').value = item.guru || '';
+            document.getElementById('sData').value = item.data;
+            for(let i=1;i<=6;i++) document.getElementById('iqra'+i).value = item.tasmik['iqra'+i];
+            document.getElementById('alquran').value = item.tasmik.alquran;
+            for(let i=1;i<=6;i++) document.getElementById('tp'+i).value = item.jawi['tp'+i];
+            document.getElementById('wudhuM').value = item.solat.wudhu.menguasai; document.getElementById('wudhuB').value = item.solat.wudhu.belum;
+            document.getElementById('perlakuanM').value = item.solat.perlakuan.menguasai; document.getElementById('perlakuanB').value = item.solat.perlakuan.belum;
+            document.getElementById('perbuatanM').value = item.solat.perbuatan.menguasai; document.getElementById('perbuatanB').value = item.solat.perbuatan.belum;
+        }
+
+
+        function addClass() { classes.push({name: document.getElementById('cName').value, action: document.getElementById('cAction').value, data: document.getElementById('cData').value}); saveData(); }
+       
+        function addDataTahun6() {
+            const data = {
+                jumlahMurid: document.getElementById('cT6JumlahMurid').value,
+                sasaranKhatam: document.getElementById('cT6SasaranKhatam').value,
+                bilKhatam: document.getElementById('cT6BilKhatam').value,
+                peratusKhatam: document.getElementById('cT6PeratusKhatam').value,
+                bilLemahIqra: document.getElementById('cT6BilLemahIqra').value,
+                peratusCelikIqra: document.getElementById('cT6PeratusCelikIqra').value
+            };
+            if(editingT6Index === -1) dataFokusTahun6.push(data);
+            else { dataFokusTahun6[editingT6Index] = data; editingT6Index = -1; }
+            saveData();
+        }
+
+
+        function addStatusEntry() {
+            const data = {
+                kelas: document.getElementById('sKelas').value,
+                bilMurid: document.getElementById('sBilMurid').value,
+                guru: document.getElementById('sGuru').value,
+                data: document.getElementById('sData').value,
+                tasmik: { iqra1: document.getElementById('iqra1').value, iqra2: document.getElementById('iqra2').value, iqra3: document.getElementById('iqra3').value, iqra4: document.getElementById('iqra4').value, iqra5: document.getElementById('iqra5').value, iqra6: document.getElementById('iqra6').value, alquran: document.getElementById('alquran').value },
+                jawi: { tp1: document.getElementById('tp1').value, tp2: document.getElementById('tp2').value, tp3: document.getElementById('tp3').value, tp4: document.getElementById('tp4').value, tp5: document.getElementById('tp5').value, tp6: document.getElementById('tp6').value },
+                solat: { wudhu: {menguasai: document.getElementById('wudhuM').value, belum: document.getElementById('wudhuB').value}, perlakuan: {menguasai: document.getElementById('perlakuanM').value, belum: document.getElementById('perlakuanB').value}, perbuatan: {menguasai: document.getElementById('perbuatanM').value, belum: document.getElementById('perbuatanB').value} }
+            };
+            if (editingIndex === -1) statusKelasData.push(data);
+            else { statusKelasData[editingIndex] = data; editingIndex = -1; }
+            saveData();
+        }
+
+
+        function addHebahan() { hebahanList.push(document.getElementById('hebahanInput').value); saveData(); }
+       
+        function addPelaporan() {
+            pelaporanLinks.push({ label: document.getElementById('pLabel').value, url: document.getElementById('pUrl').value });
+            saveData();
+        }
+
+
+        function renderAdminItem(label, index, type) {
+            return `<div class="flex justify-between items-center p-2 bg-gray-100 rounded border text-xs">
+                    <span class="truncate mr-2">${label}</span>
+                    <div>
+                        ${(type !== 'hebahanList' && type !== 'pelaporan') ? `<button onclick="editEntry('${type}', ${index})" class="text-blue-600 underline font-bold mr-2">Edit</button>` : ''}
+                        <button onclick="deleteEntry('${type}', ${index})" class="text-red-500 underline font-bold">Hapus</button>
+                    </div>
+                </div>`;
+        }
+        function editEntry(type, index) {
+            if(type === 'statusData') { editingIndex = index; renderAdminDashboard(); }
+            else if(type === 'tahun6') { editingT6Index = index; renderAdminDashboard(); }
+        }
+        function deleteEntry(type, index) {
+            if(type === 'classes') classes.splice(index, 1);
+            else if(type === 'statusData') statusKelasData.splice(index, 1);
+            else if(type === 'hebahanList') hebahanList.splice(index, 1);
+            else if(type === 'tahun6') dataFokusTahun6.splice(index, 1);
+            else if(type === 'pelaporan') pelaporanLinks.splice(index, 1);
+            saveData();
+        }
+
+
+        function renderMainView() {
+            const hebahanSection = document.getElementById('hebahan-section');
+            const displayHebahan = document.getElementById('display-hebahan');
+           
+            if (currentView === 'Utama') {
+                hebahanSection.classList.remove('hidden');
+                displayHebahan.innerHTML = hebahanList.length > 0 ? hebahanList.map(h => `<p class="text-blue-700 font-medium text-sm border-b py-1">· ${h}</p>`).join('') : '<p class="text-gray-400 text-xs italic">Tiada hebahan terkini.</p>';
+            } else {
+                hebahanSection.classList.add('hidden');
+            }
+
+
+            const container = document.getElementById('list-container');
+            const mainTitle = document.getElementById('main-title');
+            container.innerHTML = '';
+           
+            if (currentView === 'Utama') {
+                mainTitle.innerText = "STATUS PEREKODAN JQAF";
+                const groups = {'Belum ada tindakan': [], 'Sedang ditaksir': [], 'Telah ditaksir': []};
+                const statusStyles = { 'Belum ada tindakan': 'border-red-500 text-red-900', 'Sedang ditaksir': 'border-amber-500 text-amber-900', 'Telah ditaksir': 'border-green-500 text-green-900' };
+                classes.forEach(c => { if(groups[c.action]) groups[c.action].push(c); });
+                container.className = "grid grid-cols-1 gap-6";
+                container.innerHTML = Object.keys(groups).map(status => `
+                    <div class="bg-white p-4 rounded-xl border shadow-sm ${statusStyles[status].split(' ')[0]}">
+                        <h3 class="font-bold ${statusStyles[status].split(' ')[1]} mb-3 border-b pb-2 uppercase">${status}</h3>
+                        ${groups[status].length > 0 ? groups[status].map(item => `<div class="p-3 mb-2 bg-gray-50 rounded-lg border text-xs"><p class="font-bold text-blue-900">${item.name}</p><p class="text-blue-600">${item.data}</p></div>`).join('') : '<p class="text-gray-400 text-xs italic">Tiada data.</p>'}
+                    </div>
+                `).join('');
+            } else if (currentView === 'Pelaporan') {
+                mainTitle.innerText = "PELAPORAN KESELURUHAN";
+                container.className = "grid grid-cols-1 md:grid-cols-3 gap-6";
+                container.innerHTML = pelaporanLinks.length > 0 ? pelaporanLinks.map(link => `
+                    <a href="${link.url}" target="_blank" class="block bg-white p-8 rounded-xl shadow-lg border-2 border-blue-600 text-center hover:bg-blue-50 transition transform hover:scale-105">
+                        <h3 class="text-xl font-bold text-blue-900">${link.label}</h3>
+                        <p class="text-blue-500 text-sm mt-2 underline">Klik untuk buka Google Sheet</p>
+                    </a>
+                `).join('') : '<p class="text-gray-500 italic">Tiada pautan pelaporan direkodkan dalam Panel Pentadbir.</p>';
+            } else if (currentView === 'Tahun6') {
+                mainTitle.innerText = "DATA FOKUS TAHUN 6";
+                container.className = "grid grid-cols-1 gap-6";
+                container.innerHTML = dataFokusTahun6.length > 0 ? dataFokusTahun6.map(item => `
+                    <div class="bg-white p-6 rounded-xl border-t-8 border-green-500 shadow-lg">
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <p class="text-xs text-blue-600 font-bold uppercase">Jumlah Murid</p>
+                                <p class="text-2xl font-bold text-blue-900">${item.jumlahMurid}</p>
+                            </div>
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <p class="text-xs text-blue-600 font-bold uppercase">Sasaran Khatam</p>
+                                <p class="text-2xl font-bold text-blue-900">${item.sasaranKhatam}</p>
+                            </div>
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <p class="text-xs text-blue-600 font-bold uppercase">Bil. Khatam</p>
+                                <p class="text-2xl font-bold text-blue-900">${item.bilKhatam}</p>
+                            </div>
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <p class="text-xs text-blue-600 font-bold uppercase">Peratus Khatam</p>
+                                <p class="text-2xl font-bold text-blue-900">${item.peratusKhatam}%</p>
+                            </div>
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <p class="text-xs text-blue-600 font-bold uppercase">Bil. Lemah Iqra</p>
+                                <p class="text-2xl font-bold text-blue-900">${item.bilLemahIqra}</p>
+                            </div>
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <p class="text-xs text-blue-600 font-bold uppercase">Peratus Celik Iqra</p>
+                                <p class="text-2xl font-bold text-blue-900">${item.peratusCelikIqra}%</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('') : '<p class="text-gray-500 italic">Tiada data fokus tahun 6 direkodkan.</p>';
+            } else {
+                mainTitle.innerText = currentView === 'Tasmik' ? "DATA TASMIK" : (currentView === 'Jawi' ? "DATA JAWI" : "DATA SOLAT");
+                container.className = "grid grid-cols-1 md:grid-cols-2 gap-6";
+                container.innerHTML = statusKelasData.map((item, i) => `<div class="bg-white p-4 rounded-xl border shadow-sm"><p class="font-bold text-blue-900 mb-2">${item.kelas} (${item.bilMurid} Murid) - Guru: ${item.guru || '-'}</p><p class="text-xs text-blue-600 mb-2">${item.data}</p><canvas id="chart-${i}"></canvas></div>`).join('');
+                statusKelasData.forEach((item, i) => {
+                    let labels, data, bg;
+                    if (currentView === 'Tasmik') { labels = ['Iqra 1','Iqra 2','Iqra 3','Iqra 4','Iqra 5','Iqra 6', 'Al-Quran']; data = [item.tasmik.iqra1, item.tasmik.iqra2, item.tasmik.iqra3, item.tasmik.iqra4, item.tasmik.iqra5, item.tasmik.iqra6, item.tasmik.alquran]; bg = '#3b82f6'; }
+                    else if (currentView === 'Jawi') { labels = ['TP1','TP2','TP3','TP4','TP5','TP6']; data = [item.jawi.tp1, item.jawi.tp2, item.jawi.tp3, item.jawi.tp4, item.jawi.tp5, item.jawi.tp6]; bg = '#f59e0b'; }
+                    else { labels = ['Wudhu', 'Perlakuan', 'Perbuatan']; data = [item.solat.wudhu.menguasai, item.solat.perlakuan.menguasai, item.solat.perbuatan.menguasai]; bg = '#10b981'; }
+                    new Chart(document.getElementById(`chart-${i}`), { type: 'bar', data: { labels, datasets: [{ label: 'Jumlah/Menguasai', data, backgroundColor: bg }] } });
+                });
+            }
+        }
+        window.onload = renderMainView;
+    </script>
+</body>
+</html>
