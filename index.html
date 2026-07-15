@@ -4,28 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PELAPORAN JQAF SK BUKIT KALLAM</title>
-    <!-- Import Google Fonts Montserrat -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght=300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        // Konfigurasi Tailwind untuk menetapkan Montserrat sebagai fon sans lalai
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Montserrat', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
     <style>
-        /* Memastikan semua elemen (termasuk input, select, button) mewarisi fon Montserrat */
-        * {
-            font-family: 'Montserrat', sans-serif !important;
-        }
+        body { font-family: 'Montserrat', sans-serif; }
     </style>
+
+    <!-- Memasukkan SDK Firebase Core, Auth dan Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-blue-50 flex flex-col min-h-screen">
 
@@ -58,18 +47,18 @@
     </div>
 
     <main class="container mx-auto p-4 md:p-6 flex-grow">
-        <!-- Ruang Paparan Amaran Konfigurasi & Kebenaran Firestore -->
-        <div id="dynamic-alerts-container" class="space-y-4 mb-6"></div>
-
         <div id="hebahan-section" class="bg-white rounded-xl shadow-md p-5 border-l-8 border-amber-500 mb-6">
             <h2 class="text-sm font-bold text-blue-900 mb-2 uppercase tracking-widest">HEBAHAN TERKINI</h2>
             <div id="display-hebahan" class="space-y-2">
-                <p class="text-blue-700 font-medium italic text-sm">Tiada hebahan terkini.</p>
+                <p class="text-blue-700 font-medium italic text-sm">Memuat turun hebahan...</p>
             </div>
         </div>
 
         <h2 id="main-title" class="text-xl font-bold text-blue-900 mb-4 tracking-tight uppercase">STATUS PEREKODAN JQAF</h2>
         <div id="list-container" class="grid grid-cols-1 gap-6">
+            <div class="text-center py-12">
+                <p class="text-gray-500 italic">Memuat turun data daripada pangkalan data...</p>
+            </div>
         </div>
     </main>
 
@@ -77,280 +66,113 @@
         Hak Cipta Terpelihara @ eLmioZ Designer.
     </footer>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
-
-        // Konfigurasi Baharu Firebase JQAF-SKBK dengan measurementId
-        const firebaseConfig = {
-            apiKey: "AIzaSyBYdeHrM0-cV7eeIz18hUHoF4x9EsCkJ0E",
-            authDomain: "jqaf-skbk.firebaseapp.com",
-            projectId: "jqaf-skbk",
-            storageBucket: "jqaf-skbk.firebasestorage.app",
-            messagingSenderId: "281645626968",
-            appId: "1:281645626968:web:befcc37ceb38fe2d2d7c2d",
-            measurementId: "G-PBXH02NG6N"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app); // Inisialisasi Firebase Analytics
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = "jqaf-skbk"; 
-
+    <script>
         let currentView = 'Utama';
         let isLoggedIn = false;
         let editingIndex = -1;
         let editingT6Index = -1;
-        let isSyncSetup = false; 
         
+        // Memori Tempatan (Akan diisi secara Real-Time dari Firebase)
         let classes = [];
         let statusKelasData = [];
         let hebahanList = [];
         let dataFokusTahun6 = [];
         let pelaporanLinks = [];
-        let currentUser = null;
 
-        const getPublicCollectionPath = (collectionName) => {
-            return collection(db, 'artifacts', appId, 'public', 'data', collectionName);
+        // Konfigurasi Firebase & Inisialisasi
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'jqaf-sk-bukit-kallam';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "AIzaSyBYdeHrM0-cV7eeIz18hUHoF4x9EsCkJ0E",
+                authDomain: "jqaf-skbk.firebaseapp.com",
+                projectId: "jqaf-skbk",
+                storageBucket: "jqaf-skbk.firebasestorage.app",
+                messagingSenderId: "281645626968",
+                appId: "1:281645626968:web:befcc37ceb38fe2d2d7c2d",
+                measurementId: "G-PBXH02NG6N"
+              };
+
+        // Inisialisasi Aplikasi Firebase (Compat mode)
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Rujukan Koleksi Firebase mengikut RULE 1
+        const getCollectionRef = (collectionName) => {
+            return db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName);
         };
 
-        const getPublicDocPath = (collectionName, docId) => {
-            return doc(db, 'artifacts', appId, 'public', 'data', collectionName, docId);
-        };
-
-        function showFirestorePermissionWarning() {
-            if (document.getElementById('firestore-permission-warning')) return;
-
-            const warningDiv = document.createElement('div');
-            warningDiv.id = 'firestore-permission-warning';
-            warningDiv.className = "bg-amber-50 border-l-8 border-amber-600 text-amber-900 p-6 rounded-xl shadow-lg border animate-fadeIn";
-            
-            warningDiv.innerHTML = `
-                <div class="flex items-start gap-4">
-                    <div class="p-2 bg-amber-600 text-white rounded-full flex-shrink-0 animate-pulse">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                        </svg>
-                    </div>
-                    <div class="flex-grow">
-                        <h3 class="text-base font-bold text-amber-900 mb-1">Ralat Kebenaran Firestore (Permission Error) Dikesan!</h3>
-                        <p class="text-xs text-amber-800 mb-4 leading-relaxed">
-                            Pangkalan data Firestore anda sedang menyekat akses pembacaan/penulisan. Sila kemaskini Firestore Rules anda menggunakan templat di bawah:
-                        </p>
-                        <ol class="list-decimal list-inside text-[11px] text-amber-800 space-y-2 mb-4">
-                            <li>Buka <a href="https://console.firebase.google.com/" target="_blank" class="underline font-bold text-blue-700 hover:text-blue-900">Firebase Console</a> projek <strong>jqaf-skbk</strong>.</li>
-                            <li>Pergi ke menu: <strong>Build</strong> &gt; <strong>Firestore Database</strong> &gt; tab <strong>Rules</strong>.</li>
-                            <li>Tampal kod peraturan berikut, kemudian klik butang <strong>Publish</strong>.</li>
-                        </ol>
-                        <div class="relative bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-[10px] mb-3 select-all border border-gray-700 shadow-inner">
-                            <pre id="rules-code-block" class="overflow-x-auto whitespace-pre-wrap">rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /artifacts/jqaf-skbk/public/data/{collection}/{document} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}</pre>
-                            <button id="btn-copy-rules" class="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-3 py-1.5 rounded transition shadow-md">
-                                Salin Kod
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            const alertContainer = document.getElementById('dynamic-alerts-container');
-            if (alertContainer) {
-                alertContainer.appendChild(warningDiv);
-                
-                document.getElementById('btn-copy-rules').onclick = function() {
-                    const rulesText = document.getElementById('rules-code-block').innerText;
-                    const el = document.createElement('textarea');
-                    el.value = rulesText;
-                    el.setAttribute('readonly', '');
-                    el.style.position = 'absolute';
-                    el.style.left = '-9999px';
-                    document.body.appendChild(el);
-                    el.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(el);
-                    
-                    this.innerText = "Berjaya!";
-                    this.classList.remove('bg-blue-600');
-                    this.classList.add('bg-green-600');
-                    setTimeout(() => {
-                        this.innerText = "Salin Kod";
-                        this.classList.remove('bg-green-600');
-                        this.classList.add('bg-blue-600');
-                    }, 2000);
-                };
-            }
-        }
-
-        function showAuthWarning(errorCode) {
-            if (document.getElementById('auth-warning-alert')) return;
-
-            let msg = "Ralat Firebase: Gagal menyambung ke sistem pengesahan.";
-            if (errorCode === 'auth/configuration-not-found') {
-                msg = "<strong>Sila Aktifkan:</strong> Buka Firebase Console projek <code>jqaf-skbk</code>, pergi ke menu <strong>Authentication</strong> dan klik butang <strong>'Get Started'</strong>.";
-            } else if (errorCode === 'auth/operation-not-allowed' || errorCode === 'auth/admin-restricted-operation' || errorCode.includes('admin-restricted-operation')) {
-                msg = "<strong>Sila Aktifkan Anonymous Login:</strong> Ralat <code>auth/admin-restricted-operation</code> bermaksud operasi log masuk tanpa nama (Anonymous) sedang disekat atau belum diaktifkan di Firebase Console anda.<br><br><strong>Cara Selesaikan:</strong><br>1. Buka <a href='https://console.firebase.google.com/' target='_blank' class='underline font-bold text-blue-700'>Firebase Console</a> projek <strong>jqaf-skbk</strong>.<br>2. Pergi ke menu <strong>Authentication</strong> &gt; tab <strong>'Sign-in method'</strong>.<br>3. Klik pada pilihan <strong>'Anonymous'</strong>, aktifkan suis <strong>'Enable'</strong> dan klik butang <strong>'Save'</strong>.<br>4. Segarkan semula (refresh) halaman ini.";
-            }
-
-            const alertDiv = document.createElement('div');
-            alertDiv.id = 'auth-warning-alert';
-            alertDiv.className = "bg-red-50 border-l-4 border-red-500 text-red-700 p-5 rounded-xl shadow-md text-sm animate-fadeIn";
-            alertDiv.innerHTML = `
-                <div class="flex items-start">
-                    <div class="py-1">
-                        <svg class="fill-current h-6 w-6 text-red-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v2H9zm0 4v-2h2v2H9z"/></svg>
-                    </div>
-                    <div>
-                        <p class="font-bold text-red-950 text-base">Konfigurasi Pengesahan Firebase Diperlukan</p>
-                        <p class="text-xs mt-2 text-red-900 leading-relaxed">${msg}</p>
-                        <p class="text-[10px] text-red-500 mt-3 font-mono bg-red-100 px-2 py-1 rounded inline-block">Ralat Kod: ${errorCode}</p>
-                    </div>
-                </div>
-            `;
-            const alertContainer = document.getElementById('dynamic-alerts-container');
-            if (alertContainer) {
-                alertContainer.appendChild(alertDiv);
-            }
-        }
-
-        const handleAuthError = (error) => {
-            console.warn("Sistem Pengesahan Firebase memerlukan konfigurasi tambahan:", error);
-            showAuthWarning(error.code || error.message);
-        };
-
-        const initAuth = async () => {
+        // Mulakan Sesi Autentikasi terlebih dahulu mengikut RULE 3
+        async function initAuthAndData() {
             try {
-                // Sentiasa utamakan token khas sekiranya ada, jika tidak gunakan log masuk tanpa nama.
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    try {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } catch (tokenError) {
-                        console.warn("Ketidakpadanan dikesan pada token sistem platform. Mengalihkan mod log masuk kepada Tanpa Nama (Anonymous):", tokenError);
-                        try {
-                            await signInAnonymously(auth);
-                        } catch (anonError) {
-                            handleAuthError(anonError);
-                        }
-                    }
+                    await auth.signInWithCustomToken(__initial_auth_token);
                 } else {
-                    try {
-                        await signInAnonymously(auth);
-                    } catch (anonError) {
-                        handleAuthError(anonError);
-                    }
+                    await auth.signInAnonymously();
                 }
-            } catch (error) {
-                handleAuthError(error);
+            } catch (err) {
+                console.error("Autentikasi gagal:", err);
             }
-        };
 
-        initAuth();
+            // Selepas disahkan, dengar perubahan data secara Real-Time (onSnapshot)
+            setupRealtimeListeners();
+        }
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                const authAlert = document.getElementById('auth-warning-alert');
-                if (authAlert) authAlert.remove();
-                
-                setupRealtimeSync();
-            }
-        });
-
-        function setupRealtimeSync() {
-            if (!currentUser) return;
-            if (isSyncSetup) return; 
-            isSyncSetup = true;
-
-            // 1. Data Kelas Utama
-            onSnapshot(getPublicCollectionPath('classes'), (snapshot) => {
+        // Dengar Perubahan secara Real-Time daripada Firestore
+        function setupRealtimeListeners() {
+            // 1. Pengurusan Kelas
+            getCollectionRef('classes').onSnapshot(snapshot => {
                 classes = [];
                 snapshot.forEach(doc => {
                     classes.push({ id: doc.id, ...doc.data() });
                 });
                 renderMainView();
-                if (!document.getElementById('adminPanel').classList.contains('hidden') && isLoggedIn) renderAdminDashboard();
-            }, (error) => {
-                console.error("Ralat classes:", error);
-                if (error.code === 'permission-denied') showFirestorePermissionWarning();
-            });
+            }, err => console.error("Gagal mendapatkan data kelas:", err));
 
-            // 2. Data Status Perekodan Kelas
-            onSnapshot(getPublicCollectionPath('statusKelasData'), (snapshot) => {
+            // 2. Status Kelas
+            getCollectionRef('statusKelasData').onSnapshot(snapshot => {
                 statusKelasData = [];
                 snapshot.forEach(doc => {
                     statusKelasData.push({ id: doc.id, ...doc.data() });
                 });
                 renderMainView();
-                if (!document.getElementById('adminPanel').classList.contains('hidden') && isLoggedIn) renderAdminDashboard();
-            }, (error) => {
-                console.error("Ralat statusKelasData:", error);
-                if (error.code === 'permission-denied') showFirestorePermissionWarning();
-            });
+            }, err => console.error("Gagal mendapatkan status kelas:", err));
 
-            // 3. Data Hebahan Slaid Utama
-            onSnapshot(getPublicCollectionPath('hebahanList'), (snapshot) => {
-                hebahanList = [];
-                snapshot.forEach(doc => {
-                    hebahanList.push({ id: doc.id, ...doc.data() });
-                });
-                renderMainView();
-                if (!document.getElementById('adminPanel').classList.contains('hidden') && isLoggedIn) renderAdminDashboard();
-            }, (error) => {
-                console.error("Ralat hebahanList:", error);
-                if (error.code === 'permission-denied') showFirestorePermissionWarning();
-            });
-
-            // 4. Data Sasaran Fokus Murid Tahun 6
-            onSnapshot(getPublicCollectionPath('dataFokusTahun6'), (snapshot) => {
+            // 3. Data Fokus Tahun 6
+            getCollectionRef('dataFokusTahun6').onSnapshot(snapshot => {
                 dataFokusTahun6 = [];
                 snapshot.forEach(doc => {
                     dataFokusTahun6.push({ id: doc.id, ...doc.data() });
                 });
                 renderMainView();
-                if (!document.getElementById('adminPanel').classList.contains('hidden') && isLoggedIn) renderAdminDashboard();
-            }, (error) => {
-                console.error("Ralat dataFokusTahun6:", error);
-                if (error.code === 'permission-denied') showFirestorePermissionWarning();
-            });
+            }, err => console.error("Gagal mendapatkan data tahun 6:", err));
 
-            // 5. Data Pautan Google Sheets
-            onSnapshot(getPublicCollectionPath('pelaporanLinks'), (snapshot) => {
+            // 4. Hebahan
+            getCollectionRef('hebahanList').onSnapshot(snapshot => {
+                hebahanList = [];
+                snapshot.forEach(doc => {
+                    hebahanList.push({ id: doc.id, ...doc.data() });
+                });
+                renderMainView();
+            }, err => console.error("Gagal mendapatkan hebahan:", err));
+
+            // 5. Pelaporan Links
+            getCollectionRef('pelaporanLinks').onSnapshot(snapshot => {
                 pelaporanLinks = [];
                 snapshot.forEach(doc => {
                     pelaporanLinks.push({ id: doc.id, ...doc.data() });
                 });
                 renderMainView();
-                if (!document.getElementById('adminPanel').classList.contains('hidden') && isLoggedIn) renderAdminDashboard();
-            }, (error) => {
-                console.error("Ralat pelaporanLinks:", error);
-                if (error.code === 'permission-denied') showFirestorePermissionWarning();
-            });
+            }, err => console.error("Gagal mendapatkan pautan pelaporan:", err));
         }
 
-        const getValue = (id) => {
-            const el = document.getElementById(id);
-            return el ? el.value : '';
-        };
-
-        const getNumValue = (id) => {
-            const el = document.getElementById(id);
-            return el ? (Number(el.value) || 0) : 0;
-        };
-
-        window.changeView = function(view) { 
+        function changeView(view) { 
             currentView = view; 
             renderMainView(); 
-        };
+        }
 
-        window.toggleAdmin = function() {
+        function toggleAdmin() {
             const panel = document.getElementById('adminPanel');
             panel.classList.toggle('hidden');
             if (!panel.classList.contains('hidden')) {
@@ -362,7 +184,7 @@ service cloud.firestore {
                     renderAdminDashboard();
                 }
             }
-        };
+        }
 
         function renderLogin() {
             const content = document.getElementById('adminPanelContent');
@@ -370,12 +192,11 @@ service cloud.firestore {
                 <div class="text-center p-8">
                     <h2 class="text-2xl font-bold text-blue-900 mb-6">Log Masuk Pentadbir</h2>
                     <input type="password" id="adminPass" placeholder="Masukkan Kata Laluan" class="w-full max-w-sm p-3 mb-4 border rounded-lg text-center mx-auto block">
-                    <button id="btnLogin" class="w-full max-w-sm bg-blue-800 text-white p-3 rounded-lg font-bold hover:bg-blue-900 mx-auto block">Masuk</button>
+                    <button onclick="checkPassword()" class="w-full max-w-sm bg-blue-800 text-white p-3 rounded-lg font-bold hover:bg-blue-900 mx-auto block">Masuk</button>
                     <button onclick="toggleAdmin()" class="block w-full text-gray-400 mt-4 text-sm underline">Batal</button>
                     <p id="passError" class="text-red-500 mt-4 hidden font-bold">Kata laluan salah!</p>
                 </div>
             `;
-            document.getElementById('btnLogin').onclick = checkPassword;
         }
 
         function checkPassword() {
@@ -390,18 +211,13 @@ service cloud.firestore {
             }
         }
 
-        window.logoutAdmin = function() {
-            isLoggedIn = false;
-            toggleAdmin();
-        };
-
         function renderAdminDashboard() {
             const content = document.getElementById('adminPanelContent');
             content.innerHTML = `
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold text-blue-900">Panel Pentadbir</h2>
                     <div class="flex gap-2">
-                        <button onclick="logoutAdmin()" class="text-red-600 hover:text-red-800 font-bold text-sm">Log Keluar</button>
+                        <button onclick="isLoggedIn = false; toggleAdmin();" class="text-red-600 hover:text-red-800 font-bold text-sm">Log Keluar</button>
                         <button onclick="toggleAdmin()" class="text-gray-500 hover:text-gray-800 font-bold">Tutup X</button>
                     </div>
                 </div>
@@ -410,9 +226,17 @@ service cloud.firestore {
                     <div class="border p-4 rounded-xl">
                         <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">1. PENGURUSAN KELAS</h3>
                         <input type="text" id="cName" placeholder="Nama Kelas" class="w-full p-2 mb-2 border rounded text-sm">
-                        <select id="cAction" class="w-full p-2 mb-2 border rounded text-sm"><option>Belum ada tindakan</option><option>Sedang ditaksir</option><option>Telah ditaksir</option></select>
-                        <select id="cData" class="w-full p-2 mb-2 border rounded text-sm"><option>Perekodan 1</option><option>Perekodan 2</option><option>Perekodan 3</option></select>
-                        <button id="btnSaveClass" class="w-full bg-blue-800 text-white p-2 rounded text-sm font-bold">Simpan Kelas</button>
+                        <select id="cAction" class="w-full p-2 mb-2 border rounded text-sm">
+                            <option>Belum ada tindakan</option>
+                            <option>Sedang ditaksir</option>
+                            <option>Telah ditaksir</option>
+                        </select>
+                        <select id="cData" class="w-full p-2 mb-2 border rounded text-sm">
+                            <option>Perekodan 1</option>
+                            <option>Perekodan 2</option>
+                            <option>Perekodan 3</option>
+                        </select>
+                        <button onclick="addClass()" class="w-full bg-blue-800 text-white p-2 rounded text-sm font-bold">Simpan Kelas</button>
                         <div class="mt-4 space-y-1">${classes.map((item, i) => renderAdminItem(item.name + ' (' + item.action + ')', i, 'classes')).join('')}</div>
                     </div>
                    
@@ -421,13 +245,33 @@ service cloud.firestore {
                         <input type="text" id="sKelas" placeholder="Nama Kelas" class="w-full p-2 mb-2 border rounded text-sm">
                         <input type="number" id="sBilMurid" placeholder="Bilangan Murid" class="w-full p-2 mb-2 border rounded text-sm">
                         <input type="text" id="sGuru" placeholder="Nama Guru" class="w-full p-2 mb-2 border rounded text-sm">
-                        <select id="sData" class="w-full p-2 mb-2 border rounded text-sm"><option>Perekodan 1</option><option>Perekodan 2</option><option>Perekodan 3</option></select>
-                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border"><p class="font-bold border-b pb-1">DATA TASMIK</p><div class="grid grid-cols-2 gap-2">${[1,2,3,4,5,6].map(i => `<input type="text" id="iqra${i}" placeholder="Iqra ${i}" class="p-1 border rounded">`).join('')}</div><input type="text" id="alquran" placeholder="Al-Quran" class="w-full p-1 border rounded"></div>
-                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border"><p class="font-bold border-b pb-1">DATA JAWI</p><div class="grid grid-cols-3 gap-2">${[1,2,3,4,5,6].map(i => `<input type="text" id="tp${i}" placeholder="TP${i}" class="p-1 border rounded">`).join('')}</div></div>
-                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border"><p class="font-bold border-b pb-1">DATA SOLAT</p>
-                            ${['wudhu', 'perlakuan', 'perbuatan'].map(k => `<div class="grid grid-cols-2 gap-1 mb-1"><span>${k.toUpperCase()}:</span><input type="text" id="${k}M" placeholder="Menguasai" class="p-1 border rounded"><input type="text" id="${k}B" placeholder="Belum" class="p-1 border rounded"></div>`).join('')}
+                        <select id="sData" class="w-full p-2 mb-2 border rounded text-sm">
+                            <option>Perekodan 1</option>
+                            <option>Perekodan 2</option>
+                            <option>Perekodan 3</option>
+                        </select>
+                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border">
+                            <p class="font-bold border-b pb-1">DATA TASMIK</p>
+                            <div class="grid grid-cols-2 gap-2">${[1,2,3,4,5,6].map(i => `<input type="text" id="iqra${i}" placeholder="Iqra ${i}" class="p-1 border rounded">`).join('')}</div>
+                            <input type="text" id="alquran" placeholder="Al-Quran" class="w-full p-1 border rounded">
                         </div>
-                        <button id="btnSaveStatus" class="w-full bg-blue-600 text-white p-2 rounded text-sm font-bold">${editingIndex === -1 ? 'Simpan Status' : 'Kemaskini Status'}</button>
+                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border">
+                            <p class="font-bold border-b pb-1">DATA JAWI</p>
+                            <div class="grid grid-cols-3 gap-2">${[1,2,3,4,5,6].map(i => `<input type="text" id="tp${i}" placeholder="TP${i}" class="p-1 border rounded">`).join('')}</div>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border">
+                            <p class="font-bold border-b pb-1">DATA SOLAT</p>
+                            ${['wudhu', 'perlakuan', 'perbuatan'].map(k => `
+                                <div class="grid grid-cols-2 gap-1 mb-1">
+                                    <span>${k.toUpperCase()}:</span>
+                                    <input type="text" id="${k}M" placeholder="Menguasai" class="p-1 border rounded">
+                                    <input type="text" id="${k}B" placeholder="Belum" class="p-1 border rounded">
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button onclick="addStatusEntry()" class="w-full bg-blue-600 text-white p-2 rounded text-sm font-bold">
+                            ${editingIndex === -1 ? 'Simpan Status' : 'Kemaskini Status'}
+                        </button>
                         <div class="mt-4 space-y-1">${statusKelasData.map((item, i) => renderAdminItem(item.kelas + ' (' + item.data + ')', i, 'statusData')).join('')}</div>
                     </div>
 
@@ -441,14 +285,19 @@ service cloud.firestore {
                             <input type="number" id="cT6BilLemahIqra" placeholder="Bil. Lemah Iqra" class="p-2 border rounded text-sm">
                             <input type="text" id="cT6PeratusCelikIqra" placeholder="Peratus Celik Iqra (%)" class="p-2 border rounded text-sm">
                         </div>
-                        <button id="btnSaveT6" class="w-full bg-green-600 text-white p-2 rounded text-sm font-bold mb-4">${editingT6Index === -1 ? 'Simpan Data' : 'Kemaskini Data'}</button>
+                        <button onclick="addDataTahun6()" class="w-full bg-green-600 text-white p-2 rounded text-sm font-bold mb-4">
+                            ${editingT6Index === -1 ? 'Simpan Data' : 'Kemaskini Data'}
+                        </button>
                         <div class="space-y-1">${dataFokusTahun6.map((item, i) => renderAdminItem('Data Fokus Tahun 6 - Murid: ' + item.jumlahMurid, i, 'tahun6')).join('')}</div>
                     </div>
 
                     <div class="border p-4 rounded-xl">
                         <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">4. HEBAHAN TERKINI</h3>
-                        <div class="flex gap-2 mb-3"><input type="text" id="hebahanInput" placeholder="Hebahan baru..." class="flex-1 p-2 border rounded text-sm"><button id="btnAddHebahan" class="bg-amber-500 text-white px-4 py-2 rounded text-sm font-bold">Tambah</button></div>
-                        <div class="space-y-1">${hebahanList.map((h, i) => renderAdminItem(h.teks || h, i, 'hebahanList')).join('')}</div>
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="hebahanInput" placeholder="Hebahan baru..." class="flex-1 p-2 border rounded text-sm">
+                            <button onclick="addHebahan()" class="bg-amber-500 text-white px-4 py-2 rounded text-sm font-bold">Tambah</button>
+                        </div>
+                        <div class="space-y-1">${hebahanList.map((h, i) => renderAdminItem(h.teks, i, 'hebahanList')).join('')}</div>
                     </div>
 
                     <div class="border p-4 rounded-xl">
@@ -460,249 +309,229 @@ service cloud.firestore {
                                 <option>Perekodan 3</option>
                             </select>
                             <input type="text" id="pUrl" placeholder="URL Google Sheet" class="flex-1 p-2 border rounded text-sm">
-                            <button id="btnSavePelaporan" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Simpan</button>
+                            <button onclick="addPelaporan()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Simpan</button>
                         </div>
                         <div class="space-y-1">${pelaporanLinks.map((p, i) => renderAdminItem(p.label + ': ' + p.url, i, 'pelaporan')).join('')}</div>
                     </div>
                 </div>
             `;
-
-            document.getElementById('btnSaveClass').onclick = addClass;
-            document.getElementById('btnSaveStatus').onclick = addStatusEntry;
-            document.getElementById('btnSaveT6').onclick = addDataTahun6;
-            document.getElementById('btnAddHebahan').onclick = addHebahan;
-            document.getElementById('btnSavePelaporan').onclick = addPelaporan;
-
             if (editingIndex !== -1) fillEditForm();
             if (editingT6Index !== -1) fillEditT6Form();
         }
 
         function fillEditT6Form() {
             const item = dataFokusTahun6[editingT6Index];
-            if (!item) return;
-            document.getElementById('cT6JumlahMurid').value = item.jumlahMurid || '';
-            document.getElementById('cT6SasaranKhatam').value = item.sasaranKhatam || '';
-            document.getElementById('cT6BilKhatam').value = item.bilKhatam || '';
-            document.getElementById('cT6PeratusKhatam').value = item.peratusKhatam || '';
-            document.getElementById('cT6BilLemahIqra').value = item.bilLemahIqra || '';
-            document.getElementById('cT6PeratusCelikIqra').value = item.peratusCelikIqra || '';
+            document.getElementById('cT6JumlahMurid').value = item.jumlahMurid;
+            document.getElementById('cT6SasaranKhatam').value = item.sasaranKhatam;
+            document.getElementById('cT6BilKhatam').value = item.bilKhatam;
+            document.getElementById('cT6PeratusKhatam').value = item.peratusKhatam;
+            document.getElementById('cT6BilLemahIqra').value = item.bilLemahIqra;
+            document.getElementById('cT6PeratusCelikIqra').value = item.peratusCelikIqra;
         }
 
         function fillEditForm() {
             const item = statusKelasData[editingIndex];
-            if (!item) return;
-            document.getElementById('sKelas').value = item.kelas || '';
-            document.getElementById('sBilMurid').value = item.bilMurid || '';
+            document.getElementById('sKelas').value = item.kelas;
+            document.getElementById('sBilMurid').value = item.bilMurid;
             document.getElementById('sGuru').value = item.guru || '';
-            document.getElementById('sData').value = item.data || 'Perekodan 1';
-            
-            for(let i=1;i<=6;i++) {
-                const val = (item.tasmik && item.tasmik['iqra'+i] !== undefined) ? item.tasmik['iqra'+i] : '';
-                document.getElementById('iqra'+i).value = val;
-            }
-            document.getElementById('alquran').value = (item.tasmik && item.tasmik.alquran !== undefined) ? item.tasmik.alquran : '';
-            
-            for(let i=1;i<=6;i++) {
-                const val = (item.jawi && item.jawi['tp'+i] !== undefined) ? item.jawi['tp'+i] : '';
-                document.getElementById('tp'+i).value = val;
-            }
-            
-            document.getElementById('wudhuM').value = (item.solat && item.solat.wudhu) ? item.solat.wudhu.menguasai : '';
-            document.getElementById('wudhuB').value = (item.solat && item.solat.wudhu) ? item.solat.wudhu.belum : '';
-            document.getElementById('perlakuanM').value = (item.solat && item.solat.perlakuan) ? item.solat.perlakuan.menguasai : '';
-            document.getElementById('perlakuanB').value = (item.solat && item.solat.perlakuan) ? item.solat.perlakuan.belum : '';
-            document.getElementById('perbuatanM').value = (item.solat && item.solat.perbuatan) ? item.solat.perbuatan.menguasai : '';
-            document.getElementById('perbuatanB').value = (item.solat && item.solat.perbuatan) ? item.solat.perbuatan.belum : '';
+            document.getElementById('sData').value = item.data;
+            for(let i=1;i<=6;i++) document.getElementById('iqra'+i).value = item.tasmik['iqra'+i] || '';
+            document.getElementById('alquran').value = item.tasmik.alquran || '';
+            for(let i=1;i<=6;i++) document.getElementById('tp'+i).value = item.jawi['tp'+i] || '';
+            document.getElementById('wudhuM').value = item.solat.wudhu.menguasai || ''; 
+            document.getElementById('wudhuB').value = item.solat.wudhu.belum || '';
+            document.getElementById('perlakuanM').value = item.solat.perlakuan.menguasai || ''; 
+            document.getElementById('perlakuanB').value = item.solat.perlakuan.belum || '';
+            document.getElementById('perbuatanM').value = item.solat.perbuatan.menguasai || ''; 
+            document.getElementById('perbuatanB').value = item.solat.perbuatan.belum || '';
         }
 
-        async function addClass() {
-            if (!currentUser) return;
-            const payload = {
-                name: getValue('cName'),
-                action: getValue('cAction'),
-                data: getValue('cData')
-            };
-            try {
-                await addDoc(getPublicCollectionPath('classes'), payload);
-                const inputName = document.getElementById('cName');
-                if (inputName) inputName.value = '';
-            } catch (err) {
-                console.error("Ralat menambah kelas:", err);
-            }
-        }
-
-        async function addDataTahun6() {
-            if (!currentUser) return;
+        // Simpan Data Baharu ke Firestore
+        async function addClass() { 
             const data = {
-                jumlahMurid: getNumValue('cT6JumlahMurid'),
-                sasaranKhatam: getNumValue('cT6SasaranKhatam'),
-                bilKhatam: getNumValue('cT6BilKhatam'),
-                peratusKhatam: getValue('cT6PeratusKhatam'),
-                bilLemahIqra: getNumValue('cT6BilLemahIqra'),
-                peratusCelikIqra: getValue('cT6PeratusCelikIqra')
+                name: document.getElementById('cName').value, 
+                action: document.getElementById('cAction').value, 
+                data: document.getElementById('cData').value,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
-
             try {
-                if (editingT6Index === -1) {
-                    await addDoc(getPublicCollectionPath('dataFokusTahun6'), data);
-                } else {
-                    const docId = dataFokusTahun6[editingT6Index].id;
-                    await setDoc(getPublicDocPath('dataFokusTahun6', docId), data);
-                    editingT6Index = -1;
-                }
+                await getCollectionRef('classes').add(data);
+                document.getElementById('cName').value = '';
+                renderAdminDashboard();
             } catch (err) {
-                console.error("Ralat menyimpan data Tahun 6:", err);
+                console.error("Gagal menambah kelas:", err);
+            }
+        }
+       
+        async function addDataTahun6() {
+            const data = {
+                jumlahMurid: document.getElementById('cT6JumlahMurid').value,
+                sasaranKhatam: document.getElementById('cT6SasaranKhatam').value,
+                bilKhatam: document.getElementById('cT6BilKhatam').value,
+                peratusKhatam: document.getElementById('cT6PeratusKhatam').value,
+                bilLemahIqra: document.getElementById('cT6BilLemahIqra').value,
+                peratusCelikIqra: document.getElementById('cT6PeratusCelikIqra').value,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            try {
+                if(editingT6Index === -1) {
+                    await getCollectionRef('dataFokusTahun6').add(data);
+                } else { 
+                    const docId = dataFokusTahun6[editingT6Index].id;
+                    await getCollectionRef('dataFokusTahun6').doc(docId).set(data, { merge: true });
+                    editingT6Index = -1; 
+                }
+                renderAdminDashboard();
+            } catch (err) {
+                console.error("Gagal menambah data tahun 6:", err);
             }
         }
 
         async function addStatusEntry() {
-            if (!currentUser) return;
             const data = {
-                kelas: getValue('sKelas'),
-                bilMurid: getNumValue('sBilMurid'),
-                guru: getValue('sGuru'),
-                data: getValue('sData'),
+                kelas: document.getElementById('sKelas').value,
+                bilMurid: document.getElementById('sBilMurid').value,
+                guru: document.getElementById('sGuru').value,
+                data: document.getElementById('sData').value,
                 tasmik: { 
-                    iqra1: getNumValue('iqra1'), 
-                    iqra2: getNumValue('iqra2'), 
-                    iqra3: getNumValue('iqra3'), 
-                    iqra4: getNumValue('iqra4'), 
-                    iqra5: getNumValue('iqra5'), 
-                    iqra6: getNumValue('iqra6'), 
-                    alquran: getNumValue('alquran') 
+                    iqra1: document.getElementById('iqra1').value, 
+                    iqra2: document.getElementById('iqra2').value, 
+                    iqra3: document.getElementById('iqra3').value, 
+                    iqra4: document.getElementById('iqra4').value, 
+                    iqra5: document.getElementById('iqra5').value, 
+                    iqra6: document.getElementById('iqra6').value, 
+                    alquran: document.getElementById('alquran').value 
                 },
                 jawi: { 
-                    tp1: getNumValue('tp1'), 
-                    tp2: getNumValue('tp2'), 
-                    tp3: getNumValue('tp3'), 
-                    tp4: getNumValue('tp4'), 
-                    tp5: getNumValue('tp5'), 
-                    tp6: getNumValue('tp6') 
+                    tp1: document.getElementById('tp1').value, 
+                    tp2: document.getElementById('tp2').value, 
+                    tp3: document.getElementById('tp3').value, 
+                    tp4: document.getElementById('tp4').value, 
+                    tp5: document.getElementById('tp5').value, 
+                    tp6: document.getElementById('tp6').value 
                 },
                 solat: { 
                     wudhu: {
-                        menguasai: getNumValue('wudhuM'), 
-                        belum: getNumValue('wudhuB')
+                        menguasai: document.getElementById('wudhuM').value, 
+                        belum: document.getElementById('wudhuB').value
                     }, 
                     perlakuan: {
-                        menguasai: getNumValue('perlakuanM'), 
-                        belum: getNumValue('perlakuanB')
+                        menguasai: document.getElementById('perlakuanM').value, 
+                        belum: document.getElementById('perlakuanB').value
                     }, 
                     perbuatan: {
-                        menguasai: getNumValue('perbuatanM'), 
-                        belum: getNumValue('perbuatanB')
+                        menguasai: document.getElementById('perbuatanM').value, 
+                        belum: document.getElementById('perbuatanB').value
                     } 
-                }
+                },
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
-
             try {
                 if (editingIndex === -1) {
-                    await addDoc(getPublicCollectionPath('statusKelasData'), data);
-                } else {
+                    await getCollectionRef('statusKelasData').add(data);
+                } else { 
                     const docId = statusKelasData[editingIndex].id;
-                    await setDoc(getPublicDocPath('statusKelasData', docId), data);
-                    editingIndex = -1;
+                    await getCollectionRef('statusKelasData').doc(docId).set(data, { merge: true });
+                    editingIndex = -1; 
                 }
+                renderAdminDashboard();
             } catch (err) {
-                console.error("Ralat menyimpan data status kelas:", err);
+                console.error("Gagal menambah status kelas:", err);
             }
         }
 
-        async function addHebahan() {
-            if (!currentUser) return;
-            const teks = getValue('hebahanInput');
-            try {
-                await addDoc(getPublicCollectionPath('hebahanList'), { teks: teks });
-                const inputHebahan = document.getElementById('hebahanInput');
-                if (inputHebahan) inputHebahan.value = '';
-            } catch (err) {
-                console.error("Ralat menambah hebahan:", err);
-            }
-        }
-
-        async function addPelaporan() {
-            if (!currentUser) return;
-            const payload = { 
-                label: getValue('pLabel'), 
-                url: getValue('pUrl') 
+        async function addHebahan() { 
+            const text = document.getElementById('hebahanInput').value;
+            if(!text.trim()) return;
+            const data = {
+                teks: text,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
             try {
-                await addDoc(getPublicCollectionPath('pelaporanLinks'), payload);
-                const inputUrl = document.getElementById('pUrl');
-                if (inputUrl) inputUrl.value = '';
+                await getCollectionRef('hebahanList').add(data);
+                document.getElementById('hebahanInput').value = '';
+                renderAdminDashboard();
             } catch (err) {
-                console.error("Ralat menyimpan pautan pelaporan:", err);
+                console.error("Gagal menambah hebahan:", err);
+            }
+        }
+       
+        async function addPelaporan() {
+            const data = { 
+                label: document.getElementById('pLabel').value, 
+                url: document.getElementById('pUrl').value,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            try {
+                await getCollectionRef('pelaporanLinks').add(data);
+                document.getElementById('pUrl').value = '';
+                renderAdminDashboard();
+            } catch (err) {
+                console.error("Gagal menambah pautan pelaporan:", err);
             }
         }
 
         function renderAdminItem(label, index, type) {
-            return `<div class="flex justify-between items-center p-2 bg-gray-100 rounded border text-xs">
+            return `
+                <div class="flex justify-between items-center p-2 bg-gray-100 rounded border text-xs">
                     <span class="truncate mr-2">${label}</span>
-                    <div>
+                    <div class="flex-shrink-0">
                         ${(type !== 'hebahanList' && type !== 'pelaporan') ? `<button onclick="editEntry('${type}', ${index})" class="text-blue-600 underline font-bold mr-2">Edit</button>` : ''}
                         <button onclick="deleteEntry('${type}', ${index})" class="text-red-500 underline font-bold">Hapus</button>
                     </div>
                 </div>`;
         }
 
-        window.editEntry = function(type, index) {
-            if (type === 'statusData') { 
+        function editEntry(type, index) {
+            if(type === 'statusData') { 
                 editingIndex = index; 
                 renderAdminDashboard(); 
-            } else if (type === 'tahun6') { 
+            } else if(type === 'tahun6') { 
                 editingT6Index = index; 
                 renderAdminDashboard(); 
             }
-        };
+        }
 
-        window.deleteEntry = async function(type, index) {
-            if (!currentUser) return;
-            try {
-                let docId = '';
-                if (type === 'classes') {
-                    if (!classes[index]) return;
-                    docId = classes[index].id;
-                    await deleteDoc(getPublicDocPath('classes', docId));
-                } else if (type === 'statusData') {
-                    if (!statusKelasData[index]) return;
-                    docId = statusKelasData[index].id;
-                    await deleteDoc(getPublicDocPath('statusKelasData', docId));
-                } else if (type === 'hebahanList') {
-                    if (!hebahanList[index]) return;
-                    docId = hebahanList[index].id;
-                    await deleteDoc(getPublicDocPath('hebahanList', docId));
-                } else if (type === 'tahun6') {
-                    if (!dataFokusTahun6[index]) return;
-                    docId = dataFokusTahun6[index].id;
-                    await deleteDoc(getPublicDocPath('dataFokusTahun6', docId));
-                } else if (type === 'pelaporan') {
-                    if (!pelaporanLinks[index]) return;
-                    docId = pelaporanLinks[index].id;
-                    await deleteDoc(getPublicDocPath('pelaporanLinks', docId));
-                }
-            } catch (err) {
-                console.error("Ralat memadam rekod:", err);
+        async function deleteEntry(type, index) {
+            let docId = '';
+            let collectionName = '';
+
+            if(type === 'classes') {
+                docId = classes[index].id;
+                collectionName = 'classes';
+            } else if(type === 'statusData') {
+                docId = statusKelasData[index].id;
+                collectionName = 'statusKelasData';
+            } else if(type === 'hebahanList') {
+                docId = hebahanList[index].id;
+                collectionName = 'hebahanList';
+            } else if(type === 'tahun6') {
+                docId = dataFokusTahun6[index].id;
+                collectionName = 'dataFokusTahun6';
+            } else if(type === 'pelaporan') {
+                docId = pelaporanLinks[index].id;
+                collectionName = 'pelaporanLinks';
             }
-        };
+
+            if(docId && collectionName) {
+                try {
+                    await getCollectionRef(collectionName).doc(docId).delete();
+                    renderAdminDashboard();
+                } catch (err) {
+                    console.error("Gagal memadam data:", err);
+                }
+            }
+        }
 
         function renderMainView() {
-            if (window.activeCharts) {
-                Object.keys(window.activeCharts).forEach(key => {
-                    if (window.activeCharts[key]) {
-                        window.activeCharts[key].destroy();
-                    }
-                });
-                window.activeCharts = {};
-            } else {
-                window.activeCharts = {};
-            }
-
             const hebahanSection = document.getElementById('hebahan-section');
             const displayHebahan = document.getElementById('display-hebahan');
            
             if (currentView === 'Utama') {
                 hebahanSection.classList.remove('hidden');
-                displayHebahan.innerHTML = hebahanList.length > 0 ? hebahanList.map(h => `<p class="text-blue-700 font-medium text-sm border-b py-1">· ${h.teks || h}</p>`).join('') : '<p class="text-gray-400 text-xs italic">Tiada hebahan terkini.</p>';
+                displayHebahan.innerHTML = hebahanList.length > 0 
+                    ? hebahanList.map(h => `<p class="text-blue-700 font-medium text-sm border-b py-1">· ${h.teks}</p>`).join('') 
+                    : '<p class="text-gray-400 text-xs italic">Tiada hebahan terkini.</p>';
             } else {
                 hebahanSection.classList.add('hidden');
             }
@@ -714,125 +543,152 @@ service cloud.firestore {
             if (currentView === 'Utama') {
                 mainTitle.innerText = "STATUS PEREKODAN JQAF";
                 const groups = {'Belum ada tindakan': [], 'Sedang ditaksir': [], 'Telah ditaksir': []};
-                const statusStyles = { 'Belum ada tindakan': 'border-red-500 text-red-900', 'Sedang ditaksir': 'border-amber-500 text-amber-900', 'Telah ditaksir': 'border-green-500 text-green-900' };
-                classes.forEach(c => { if(groups[c.action]) groups[c.action].push(c); });
+                const statusStyles = { 
+                    'Belum ada tindakan': 'border-red-500 text-red-900', 
+                    'Sedang ditaksir': 'border-amber-500 text-amber-900', 
+                    'Telah ditaksir': 'border-green-500 text-green-900' 
+                };
+                
+                classes.forEach(c => { 
+                    if(groups[c.action]) groups[c.action].push(c); 
+                });
+
                 container.className = "grid grid-cols-1 gap-6";
                 container.innerHTML = Object.keys(groups).map(status => `
                     <div class="bg-white p-4 rounded-xl border shadow-sm ${statusStyles[status].split(' ')[0]}">
                         <h3 class="font-bold ${statusStyles[status].split(' ')[1]} mb-3 border-b pb-2 uppercase">${status}</h3>
-                        ${groups[status].length > 0 ? groups[status].map(item => `<div class="p-3 mb-2 bg-gray-50 rounded-lg border text-xs"><p class="font-bold text-blue-900">${item.name}</p><p class="text-blue-600">${item.data}</p></div>`).join('') : '<p class="text-gray-400 text-xs italic">Tiada data.</p>'}
+                        ${groups[status].length > 0 
+                            ? groups[status].map(item => `<div class="p-3 mb-2 bg-gray-50 rounded-lg border text-xs"><p class="font-bold text-blue-900">${item.name}</p><p class="text-blue-600">${item.data}</p></div>`).join('') 
+                            : '<p class="text-gray-400 text-xs italic">Tiada data.</p>'}
                     </div>
                 `).join('');
             } else if (currentView === 'Pelaporan') {
                 mainTitle.innerText = "PELAPORAN KESELURUHAN";
                 container.className = "grid grid-cols-1 md:grid-cols-3 gap-6";
-                container.innerHTML = pelaporanLinks.length > 0 ? pelaporanLinks.map(link => `
-                    <a href="${link.url}" target="_blank" class="block bg-white p-8 rounded-xl shadow-lg border-2 border-blue-600 text-center hover:bg-blue-50 transition transform hover:scale-105">
-                        <h3 class="text-xl font-bold text-blue-900">${link.label}</h3>
-                        <p class="text-blue-500 text-sm mt-2 underline">Klik untuk buka Google Sheet</p>
-                    </a>
-                `).join('') : '<p class="text-gray-500 italic">Tiada pautan pelaporan direkodkan dalam Panel Pentadbir.</p>';
+                container.innerHTML = pelaporanLinks.length > 0 
+                    ? pelaporanLinks.map(link => `
+                        <a href="${link.url}" target="_blank" class="block bg-white p-8 rounded-xl shadow-lg border-2 border-blue-600 text-center hover:bg-blue-50 transition transform hover:scale-105">
+                            <h3 class="text-xl font-bold text-blue-900">${link.label}</h3>
+                            <p class="text-blue-500 text-sm mt-2 underline">Klik untuk buka Google Sheet</p>
+                        </a>
+                    `).join('') 
+                    : '<p class="text-gray-500 italic">Tiada pautan pelaporan direkodkan dalam Panel Pentadbir.</p>';
             } else if (currentView === 'Tahun6') {
                 mainTitle.innerText = "DATA FOKUS TAHUN 6";
                 container.className = "grid grid-cols-1 gap-6";
-                container.innerHTML = dataFokusTahun6.length > 0 ? dataFokusTahun6.map(item => `
-                    <div class="bg-white p-6 rounded-xl border-t-8 border-green-500 shadow-lg">
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                <p class="text-xs text-blue-600 font-bold uppercase">Jumlah Murid</p>
-                                <p class="text-2xl font-bold text-blue-900">${item.jumlahMurid}</p>
-                            </div>
-                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                <p class="text-xs text-blue-600 font-bold uppercase">Sasaran Khatam</p>
-                                <p class="text-2xl font-bold text-blue-900">${item.sasaranKhatam}</p>
-                            </div>
-                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                <p class="text-xs text-blue-600 font-bold uppercase">Bil. Khatam</p>
-                                <p class="text-2xl font-bold text-blue-900">${item.bilKhatam}</p>
-                            </div>
-                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                <p class="text-xs text-blue-600 font-bold uppercase">Peratus Khatam</p>
-                                <p class="text-2xl font-bold text-blue-900">${item.peratusKhatam}%</p>
-                            </div>
-                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                <p class="text-xs text-blue-600 font-bold uppercase">Bil. Lemah Iqra</p>
-                                <p class="text-2xl font-bold text-blue-900">${item.bilLemahIqra}</p>
-                            </div>
-                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                <p class="text-xs text-blue-600 font-bold uppercase">Peratus Celik Iqra</p>
-                                <p class="text-2xl font-bold text-blue-900">${item.peratusCelikIqra}%</p>
+                container.innerHTML = dataFokusTahun6.length > 0 
+                    ? dataFokusTahun6.map(item => `
+                        <div class="bg-white p-6 rounded-xl border-t-8 border-green-500 shadow-lg">
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <p class="text-xs text-blue-600 font-bold uppercase">Jumlah Murid</p>
+                                    <p class="text-2xl font-bold text-blue-900">${item.jumlahMurid || 0}</p>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <p class="text-xs text-blue-600 font-bold uppercase">Sasaran Khatam</p>
+                                    <p class="text-2xl font-bold text-blue-900">${item.sasaranKhatam || 0}</p>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <p class="text-xs text-blue-600 font-bold uppercase">Bil. Khatam</p>
+                                    <p class="text-2xl font-bold text-blue-900">${item.bilKhatam || 0}</p>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <p class="text-xs text-blue-600 font-bold uppercase">Peratus Khatam</p>
+                                    <p class="text-2xl font-bold text-blue-900">${item.peratusKhatam || 0}%</p>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <p class="text-xs text-blue-600 font-bold uppercase">Bil. Lemah Iqra</p>
+                                    <p class="text-2xl font-bold text-blue-900">${item.bilLemahIqra || 0}</p>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <p class="text-xs text-blue-600 font-bold uppercase">Peratus Celik Iqra</p>
+                                    <p class="text-2xl font-bold text-blue-900">${item.peratusCelikIqra || 0}%</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `).join('') : '<p class="text-gray-500 italic">Tiada data fokus tahun 6 direkodkan.</p>';
+                    `).join('') 
+                    : '<p class="text-gray-500 italic">Tiada data fokus tahun 6 direkodkan.</p>';
             } else {
                 mainTitle.innerText = currentView === 'Tasmik' ? "DATA TASMIK" : (currentView === 'Jawi' ? "DATA JAWI" : "DATA SOLAT");
                 container.className = "grid grid-cols-1 md:grid-cols-2 gap-6";
-                container.innerHTML = statusKelasData.map((item, i) => `<div class="bg-white p-4 rounded-xl border shadow-sm"><p class="font-bold text-blue-900 mb-2">${item.kelas} (${item.bilMurid} Murid) - Guru: ${item.guru || '-'}</p><p class="text-xs text-blue-600 mb-2">${item.data}</p><canvas id="chart-${i}"></canvas></div>`).join('');
                 
-                statusKelasData.forEach((item, i) => {
-                    let labels, data, bg;
-                    if (currentView === 'Tasmik') { 
-                        labels = ['Iqra 1','Iqra 2','Iqra 3','Iqra 4','Iqra 5','Iqra 6', 'Al-Quran']; 
-                        data = [
-                            Number(item.tasmik ? item.tasmik.iqra1 : 0), 
-                            Number(item.tasmik ? item.tasmik.iqra2 : 0), 
-                            Number(item.tasmik ? item.tasmik.iqra3 : 0), 
-                            Number(item.tasmik ? item.tasmik.iqra4 : 0), 
-                            Number(item.tasmik ? item.tasmik.iqra5 : 0), 
-                            Number(item.tasmik ? item.tasmik.iqra6 : 0), 
-                            Number(item.tasmik ? item.tasmik.alquran : 0)
-                        ]; 
-                        bg = '#3b82f6'; 
-                    } else if (currentView === 'Jawi') { 
-                        labels = ['TP1','TP2','TP3','TP4','TP5','TP6']; 
-                        data = [
-                            Number(item.jawi ? item.jawi.tp1 : 0), 
-                            Number(item.jawi ? item.jawi.tp2 : 0), 
-                            Number(item.jawi ? item.jawi.tp3 : 0), 
-                            Number(item.jawi ? item.jawi.tp4 : 0), 
-                            Number(item.jawi ? item.jawi.tp5 : 0), 
-                            Number(item.jawi ? item.jawi.tp6 : 0)
-                        ]; 
-                        bg = '#f59e0b'; 
-                    } else { 
-                        labels = ['Wudhu', 'Perlakuan', 'Perbuatan']; 
-                        data = [
-                            Number(item.solat && item.solat.wudhu ? item.solat.wudhu.menguasai : 0), 
-                            Number(item.solat && item.solat.perlakuan ? item.solat.perlakuan.menguasai : 0), 
-                            Number(item.solat && item.solat.perbuatan ? item.solat.perbuatan.menguasai : 0)
-                        ]; 
-                        bg = '#10b981'; 
-                    }
-                    
-                    const canvasElement = document.getElementById(`chart-${i}`);
-                    if (canvasElement && typeof Chart !== 'undefined') {
-                        window.activeCharts[i] = new Chart(canvasElement, { 
-                            type: 'bar', 
-                            data: { 
-                                labels, 
-                                datasets: [{ 
-                                    label: 'Jumlah/Menguasai', 
-                                    data, 
-                                    backgroundColor: bg 
-                                }] 
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: true,
-                                scales: {
-                                    y: {
-                                        beginAtZero: true
+                if(statusKelasData.length > 0) {
+                    container.innerHTML = statusKelasData.map((item, i) => `
+                        <div class="bg-white p-4 rounded-xl border shadow-sm">
+                            <p class="font-bold text-blue-900 mb-2">${item.kelas} (${item.bilMurid} Murid) - Guru: ${item.guru || '-'}</p>
+                            <p class="text-xs text-blue-600 mb-2">${item.data}</p>
+                            <canvas id="chart-${i}"></canvas>
+                        </div>
+                    `).join('');
+
+                    statusKelasData.forEach((item, i) => {
+                        let labels, data, bg;
+                        if (currentView === 'Tasmik') { 
+                            labels = ['Iqra 1','Iqra 2','Iqra 3','Iqra 4','Iqra 5','Iqra 6', 'Al-Quran']; 
+                            data = [
+                                item.tasmik?.iqra1 || 0, 
+                                item.tasmik?.iqra2 || 0, 
+                                item.tasmik?.iqra3 || 0, 
+                                item.tasmik?.iqra4 || 0, 
+                                item.tasmik?.iqra5 || 0, 
+                                item.tasmik?.iqra6 || 0, 
+                                item.tasmik?.alquran || 0
+                            ]; 
+                            bg = '#3b82f6'; 
+                        } else if (currentView === 'Jawi') { 
+                            labels = ['TP1','TP2','TP3','TP4','TP5','TP6']; 
+                            data = [
+                                item.jawi?.tp1 || 0, 
+                                item.jawi?.tp2 || 0, 
+                                item.jawi?.tp3 || 0, 
+                                item.jawi?.tp4 || 0, 
+                                item.jawi?.tp5 || 0, 
+                                item.jawi?.tp6 || 0
+                            ]; 
+                            bg = '#f59e0b'; 
+                        } else { 
+                            labels = ['Wudhu', 'Perlakuan', 'Perbuatan']; 
+                            data = [
+                                item.solat?.wudhu?.menguasai || 0, 
+                                item.solat?.perlakuan?.menguasai || 0, 
+                                item.solat?.perbuatan?.menguasai || 0
+                            ]; 
+                            bg = '#10b981'; 
+                        }
+
+                        const ctx = document.getElementById(`chart-${i}`);
+                        if (ctx) {
+                            new Chart(ctx, { 
+                                type: 'bar', 
+                                data: { 
+                                    labels, 
+                                    datasets: [{ 
+                                        label: 'Jumlah/Menguasai', 
+                                        data, 
+                                        backgroundColor: bg 
+                                    }] 
+                                },
+                                options: {
+                                    responsive: true,
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true
+                                        }
                                     }
                                 }
-                            }
-                        });
-                    }
-                });
+                            });
+                        }
+                    });
+                } else {
+                    container.innerHTML = '<p class="text-gray-500 italic col-span-2">Tiada data kelas direkodkan.</p>';
+                }
             }
         }
 
-        renderMainView();
+        // Mulakan inisialisasi aplikasi
+        window.onload = function() {
+            initAuthAndData();
+        };
     </script>
 </body>
 </html>
