@@ -4,85 +4,118 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PELAPORAN JQAF SK BUKIT KALLAM</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght=300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Montserrat', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Montserrat', sans-serif; }
     </style>
-
-    <!-- Memasukkan SDK Firebase Core, Auth dan Firestore -->
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-blue-50 flex flex-col min-h-screen">
+<body class="bg-slate-50 flex flex-col min-h-screen text-slate-800">
 
-    <header class="bg-blue-800 text-white p-6 shadow-lg">
+
+
+
+    <header class="bg-indigo-900 text-white p-6 shadow-md">
         <div class="container mx-auto flex justify-between items-center">
             <div>
-                <h1 class="text-2xl font-bold tracking-tight">PELAPORAN JQAF SK BUKIT KALLAM</h1>
-                <p class="text-blue-200 text-sm">Sistem Pemantauan Data JQAF</p>
+                <h1 class="text-2xl font-bold tracking-tight text-white">PELAPORAN JQAF SK BUKIT KALLAM</h1>
+                <p class="text-indigo-200 text-sm">Sistem Pemantauan Data JQAF</p>
             </div>
-            <button onclick="toggleAdmin()" class="bg-white text-blue-800 font-semibold px-5 py-2 rounded-full shadow hover:bg-blue-50 transition duration-300">
-                Panel Pentadbir
+            <button onclick="toggleAdmin()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-3 rounded-lg shadow-sm transition duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
             </button>
         </div>
     </header>
 
-    <nav class="bg-blue-700 shadow-md py-3">
-        <div class="container mx-auto px-4 flex flex-wrap justify-center gap-4 text-sm font-medium text-blue-100 items-center">
-            <button onclick="changeView('Utama')" class="hover:text-white transition">UTAMA</button>
-            <button onclick="changeView('Tasmik')" class="hover:text-white transition">DATA TASMIK</button>
-            <button onclick="changeView('Jawi')" class="hover:text-white transition">DATA JAWI</button>
-            <button onclick="changeView('Solat')" class="hover:text-white transition">DATA SOLAT</button>
-            <button onclick="changeView('Tahun6')" class="bg-blue-900 text-white px-4 py-1.5 rounded-lg shadow-inner font-bold transition">DATA FOKUS TAHUN 6</button>
-            <button onclick="changeView('Pelaporan')" class="bg-amber-500 text-white px-4 py-1.5 rounded-lg shadow-inner font-bold transition">PELAPORAN KESELURUHAN</button>
+
+
+
+    <nav class="bg-white shadow-sm border-b border-slate-200 py-3 sticky top-0 z-40">
+        <div class="container mx-auto px-4 flex flex-wrap justify-center gap-2 text-sm font-semibold text-slate-600 items-center">
+            <button onclick="changeView('Utama')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">UTAMA</button>
+            <button onclick="changeView('Tasmik')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">DATA TASMIK</button>
+            <button onclick="changeView('Jawi')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">DATA JAWI</button>
+            <button onclick="changeView('Solat')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">DATA SOLAT</button>
+            <button onclick="changeView('Tahun6')" class="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg hover:bg-indigo-200 transition">DATA FOKUS TAHUN 6</button>
+            <button onclick="changeView('Pelaporan')" class="bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition">PELAPORAN KESELURUHAN</button>
         </div>
     </nav>
+
+
+
 
     <div id="adminPanel" class="fixed inset-0 bg-blue-900 bg-opacity-70 hidden flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div id="adminPanelContent" class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-5xl transition-all max-h-[90vh] overflow-y-auto">
         </div>
     </div>
 
+
+
+
     <main class="container mx-auto p-4 md:p-6 flex-grow">
-        <div id="hebahan-section" class="bg-white rounded-xl shadow-md p-5 border-l-8 border-amber-500 mb-6">
-            <h2 class="text-sm font-bold text-blue-900 mb-2 uppercase tracking-widest">HEBAHAN TERKINI</h2>
-            <div id="display-hebahan" class="space-y-2">
-                <p class="text-blue-700 font-medium italic text-sm">Memuat turun hebahan...</p>
+        <div id="hebahan-section" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+            <h2 class="text-xs font-bold text-indigo-900 mb-4 uppercase tracking-widest">Hebahan Terkini</h2>
+            <div id="display-hebahan" class="space-y-2 text-slate-600">
+                <p class="italic text-sm">Tiada hebahan terkini.</p>
             </div>
         </div>
 
-        <h2 id="main-title" class="text-xl font-bold text-blue-900 mb-4 tracking-tight uppercase">STATUS PEREKODAN JQAF</h2>
-        <div id="list-container" class="grid grid-cols-1 gap-6">
-            <div class="text-center py-12">
-                <p class="text-gray-500 italic">Memuat turun data daripada pangkalan data...</p>
-            </div>
-        </div>
+
+
+
+        <h2 id="main-title" class="text-xl font-bold text-slate-800 mb-6 tracking-tight uppercase">STATUS PEREKODAN JQAF</h2>
+        <div id="list-container" class="grid grid-cols-1 gap-6"></div>
     </main>
+
+
+
 
     <footer class="bg-blue-900 text-blue-300 p-6 text-center text-xs mt-auto">
         Hak Cipta Terpelihara @ eLmioZ Designer.
     </footer>
+
+
+
 
     <script>
         let currentView = 'Utama';
         let isLoggedIn = false;
         let editingIndex = -1;
         let editingT6Index = -1;
-        
+       
         // Memori Tempatan (Akan diisi secara Real-Time dari Firebase)
         let classes = [];
         let statusKelasData = [];
         let hebahanList = [];
         let dataFokusTahun6 = [];
         let pelaporanLinks = [];
+        let configPengurusan = { fasa: 'FASA 1', url: '' };
+        let mainDonutChart = null;
+        let sheetSyncInterval = null; // Tambahan interval untuk auto-update
+
 
         // Konfigurasi Firebase & Inisialisasi
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'jqaf-sk-bukit-kallam';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
+        const firebaseConfig = typeof __firebase_config !== 'undefined'
+            ? JSON.parse(__firebase_config)
             : {
                 apiKey: "AIzaSyBYdeHrM0-cV7eeIz18hUHoF4x9EsCkJ0E",
                 authDomain: "jqaf-skbk.firebaseapp.com",
@@ -93,23 +126,30 @@
                 measurementId: "G-PBXH02NG6N"
               };
 
+
+
+
         // Inisialisasi Aplikasi Firebase (Compat mode)
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+
+
+
 
         // Rujukan Koleksi Firebase mengikut RULE 1
         const getCollectionRef = (collectionName) => {
             return db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName);
         };
 
+
+
+
         // Mulakan Sesi Autentikasi terlebih dahulu mengikut RULE 3
         async function initAuthAndData() {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await auth.signInWithCustomToken(__initial_auth_token);
-                } else {
-                    await auth.signInAnonymously();
                 }
             } catch (err) {
                 console.error("Autentikasi gagal:", err);
@@ -121,14 +161,23 @@
 
         // Dengar Perubahan secara Real-Time daripada Firestore
         function setupRealtimeListeners() {
-            // 1. Pengurusan Kelas
-            getCollectionRef('classes').onSnapshot(snapshot => {
-                classes = [];
-                snapshot.forEach(doc => {
-                    classes.push({ id: doc.id, ...doc.data() });
-                });
+            // 1. Pengurusan Kelas (Dari Config + Google Sheet)
+            getCollectionRef('config').doc('pengurusan').onSnapshot(async (doc) => {
+                if (doc.exists) {
+                    configPengurusan = doc.data();
+                    if (configPengurusan.url) {
+                        await fetchSheetData(configPengurusan.url);
+                       
+                        // Setkan Auto-Update (Tarik data Google Sheet setiap 10 saat)
+                        if(sheetSyncInterval) clearInterval(sheetSyncInterval);
+                        sheetSyncInterval = setInterval(() => {
+                            fetchSheetData(configPengurusan.url);
+                        }, 10000);
+                    }
+                }
                 renderMainView();
-            }, err => console.error("Gagal mendapatkan data kelas:", err));
+            }, err => console.error("Gagal mendapatkan config kelas:", err));
+
 
             // 2. Status Kelas
             getCollectionRef('statusKelasData').onSnapshot(snapshot => {
@@ -139,6 +188,9 @@
                 renderMainView();
             }, err => console.error("Gagal mendapatkan status kelas:", err));
 
+
+
+
             // 3. Data Fokus Tahun 6
             getCollectionRef('dataFokusTahun6').onSnapshot(snapshot => {
                 dataFokusTahun6 = [];
@@ -148,6 +200,9 @@
                 renderMainView();
             }, err => console.error("Gagal mendapatkan data tahun 6:", err));
 
+
+
+
             // 4. Hebahan
             getCollectionRef('hebahanList').onSnapshot(snapshot => {
                 hebahanList = [];
@@ -156,6 +211,9 @@
                 });
                 renderMainView();
             }, err => console.error("Gagal mendapatkan hebahan:", err));
+
+
+
 
             // 5. Pelaporan Links
             getCollectionRef('pelaporanLinks').onSnapshot(snapshot => {
@@ -167,10 +225,16 @@
             }, err => console.error("Gagal mendapatkan pautan pelaporan:", err));
         }
 
-        function changeView(view) { 
-            currentView = view; 
-            renderMainView(); 
+
+
+
+        function changeView(view) {
+            currentView = view;
+            renderMainView();
         }
+
+
+
 
         function toggleAdmin() {
             const panel = document.getElementById('adminPanel');
@@ -186,6 +250,9 @@
             }
         }
 
+
+
+
         function renderLogin() {
             const content = document.getElementById('adminPanelContent');
             content.innerHTML = `
@@ -199,6 +266,9 @@
             `;
         }
 
+
+
+
         function checkPassword() {
             const pass = document.getElementById('adminPass').value;
             if (pass === 'elmioz1234') {
@@ -211,6 +281,9 @@
             }
         }
 
+
+
+
         function renderAdminDashboard() {
             const content = document.getElementById('adminPanelContent');
             content.innerHTML = `
@@ -222,96 +295,141 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    
-                    <div class="border p-4 rounded-xl">
-                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">1. PENGURUSAN KELAS</h3>
-                        <input type="text" id="cName" placeholder="Nama Kelas" class="w-full p-2 mb-2 border rounded text-sm">
-                        <select id="cAction" class="w-full p-2 mb-2 border rounded text-sm">
-                            <option>Belum ada tindakan</option>
-                            <option>Sedang ditaksir</option>
-                            <option>Telah ditaksir</option>
+                   
+                    <div class="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
+                        <h3 class="font-bold text-indigo-900 mb-3 border-b pb-2">1. PENGURUSAN KELAS</h3>
+                        <select id="cFasa" class="w-full p-2 mb-2 border rounded-lg text-sm bg-slate-50 focus:ring-indigo-500">
+                            <option value="FASA 1" ${configPengurusan.fasa === 'FASA 1' ? 'selected' : ''}>FASA 1</option>
+                            <option value="FASA 2" ${configPengurusan.fasa === 'FASA 2' ? 'selected' : ''}>FASA 2</option>
+                            <option value="FASA 3" ${configPengurusan.fasa === 'FASA 3' ? 'selected' : ''}>FASA 3</option>
                         </select>
-                        <select id="cData" class="w-full p-2 mb-2 border rounded text-sm">
-                            <option>Perekodan 1</option>
-                            <option>Perekodan 2</option>
-                            <option>Perekodan 3</option>
-                        </select>
-                        <button onclick="addClass()" class="w-full bg-blue-800 text-white p-2 rounded text-sm font-bold">Simpan Kelas</button>
-                        <div class="mt-4 space-y-1">${classes.map((item, i) => renderAdminItem(item.name + ' (' + item.action + ')', i, 'classes')).join('')}</div>
+                        <input type="text" id="cSheetUrl" placeholder="URL Google Sheet" value="${configPengurusan.url || ''}" class="w-full p-2 mb-3 border rounded-lg text-sm bg-slate-50 focus:ring-indigo-500">
+                        <button id="btnSync" onclick="saveSheetConfig()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg text-sm font-bold shadow-sm transition duration-200">Muat Naik & Segerak Data</button>
+                        <p class="text-[10px] text-slate-500 mt-3 leading-tight">Pastikan helaian Google Sheet disetkan kepada <strong>"Anyone with the link can view"</strong>. <br>Format data bermula baris ke-3 - <strong>A3:</strong> Nama Kelas, <strong>B3:</strong> Status (X = Belum, O = Sedang, Y = Telah).</p>
                     </div>
                    
-                    <div class="border p-4 rounded-xl">
-                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">2. STATUS KELAS</h3>
-                        <input type="text" id="sKelas" placeholder="Nama Kelas" class="w-full p-2 mb-2 border rounded text-sm">
-                        <input type="number" id="sBilMurid" placeholder="Bilangan Murid" class="w-full p-2 mb-2 border rounded text-sm">
-                        <input type="text" id="sGuru" placeholder="Nama Guru" class="w-full p-2 mb-2 border rounded text-sm">
-                        <select id="sData" class="w-full p-2 mb-2 border rounded text-sm">
+                    <div class="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
+                        <h3 class="font-bold text-indigo-900 mb-3 border-b pb-2">2. PEREKODAN DATA MURID</h3>
+                        <input type="text" id="sKelas" placeholder="Nama Kelas" class="w-full p-2 mb-2 border rounded text-sm bg-slate-50">
+                        <input type="number" id="sBilMurid" placeholder="Bilangan Murid" class="w-full p-2 mb-2 border rounded text-sm bg-slate-50">
+                        <input type="text" id="sGuru" placeholder="Nama Guru" class="w-full p-2 mb-2 border rounded text-sm bg-slate-50">
+                        <select id="sData" class="w-full p-2 mb-2 border rounded text-sm bg-slate-50">
                             <option>Perekodan 1</option>
                             <option>Perekodan 2</option>
                             <option>Perekodan 3</option>
                         </select>
                         <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border">
-                            <p class="font-bold border-b pb-1">DATA TASMIK</p>
+                            <p class="font-bold border-b pb-1 text-slate-700">DATA TASMIK</p>
                             <div class="grid grid-cols-2 gap-2">${[1,2,3,4,5,6].map(i => `<input type="text" id="iqra${i}" placeholder="Iqra ${i}" class="p-1 border rounded">`).join('')}</div>
                             <input type="text" id="alquran" placeholder="Al-Quran" class="w-full p-1 border rounded">
                         </div>
                         <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border">
-                            <p class="font-bold border-b pb-1">DATA JAWI</p>
+                            <p class="font-bold border-b pb-1 text-slate-700">DATA JAWI</p>
                             <div class="grid grid-cols-3 gap-2">${[1,2,3,4,5,6].map(i => `<input type="text" id="tp${i}" placeholder="TP${i}" class="p-1 border rounded">`).join('')}</div>
                         </div>
                         <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border">
-                            <p class="font-bold border-b pb-1">DATA SOLAT</p>
-                            ${['wudhu', 'perlakuan', 'perbuatan'].map(k => `
-                                <div class="grid grid-cols-2 gap-1 mb-1">
-                                    <span>${k.toUpperCase()}:</span>
+                            <p class="font-bold border-b pb-1 text-slate-700">DATA SOLAT</p>
+                            ${['wudhu', 'perlakuan', 'bacaan'].map(k => `
+                                <div class="grid grid-cols-2 gap-1 mb-1 items-center">
+                                    <span class="uppercase font-semibold">${k}:</span>
                                     <input type="text" id="${k}M" placeholder="Menguasai" class="p-1 border rounded">
                                     <input type="text" id="${k}B" placeholder="Belum" class="p-1 border rounded">
                                 </div>
                             `).join('')}
                         </div>
-                        <button onclick="addStatusEntry()" class="w-full bg-blue-600 text-white p-2 rounded text-sm font-bold">
+                        <button onclick="addStatusEntry()" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm font-bold shadow-sm transition">
                             ${editingIndex === -1 ? 'Simpan Status' : 'Kemaskini Status'}
                         </button>
-                        <div class="mt-4 space-y-1">${statusKelasData.map((item, i) => renderAdminItem(item.kelas + ' (' + item.data + ')', i, 'statusData')).join('')}</div>
+                        <div class="mt-4 space-y-1 max-h-48 overflow-y-auto">${statusKelasData.map((item, i) => renderAdminItem(item.kelas + ' (' + item.data + ')', i, 'statusData')).join('')}</div>
                     </div>
 
-                    <div class="border p-4 rounded-xl md:col-span-2">
-                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">3. DATA FOKUS TAHUN 6 ${editingT6Index !== -1 ? '(MOD EDIT)' : ''}</h3>
-                        <div class="grid grid-cols-2 gap-2 mb-3">
-                            <input type="number" id="cT6JumlahMurid" placeholder="Jumlah Murid" class="p-2 border rounded text-sm">
-                            <input type="number" id="cT6SasaranKhatam" placeholder="Sasaran Khatam" class="p-2 border rounded text-sm">
-                            <input type="number" id="cT6BilKhatam" placeholder="Bil. Khatam" class="p-2 border rounded text-sm">
-                            <input type="text" id="cT6PeratusKhatam" placeholder="Peratus Khatam (%)" class="p-2 border rounded text-sm">
-                            <input type="number" id="cT6BilLemahIqra" placeholder="Bil. Lemah Iqra" class="p-2 border rounded text-sm">
-                            <input type="text" id="cT6PeratusCelikIqra" placeholder="Peratus Celik Iqra (%)" class="p-2 border rounded text-sm">
+
+                    <div class="border p-4 rounded-xl md:col-span-2 shadow-sm bg-white border-slate-200">
+                        <h3 class="font-bold text-indigo-900 mb-3 border-b pb-2">3. DATA FOKUS TAHUN 6 ${editingT6Index !== -1 ? '(MOD EDIT)' : ''}</h3>
+                       
+                        <!-- TASMIK -->
+                        <div class="bg-gray-50 p-3 rounded-lg border mb-4">
+                            <p class="font-bold border-b pb-1 mb-2 text-slate-700">A. TASMIK</p>
+                            <select id="cT6FasaTasmik" class="w-full p-2 mb-2 border rounded-lg text-sm bg-white focus:ring-indigo-500">
+                                <option value="FASA 1">FASA 1</option><option value="FASA 2">FASA 2</option><option value="FASA 3">FASA 3</option>
+                            </select>
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <input type="number" id="cT6JumlahTasmik" placeholder="Jumlah Murid" class="p-2 border rounded text-sm">
+                                <input type="number" id="cT6BilKhatam" placeholder="Bil. Khatam" class="p-2 border rounded text-sm">
+                                <input type="text" id="cT6PeratusKhatam" placeholder="Peratus Khatam (%)" class="p-2 border rounded text-sm">
+                                <input type="number" id="cT6BilIqra" placeholder="Bil. Iqra" class="p-2 border rounded text-sm">
+                                <input type="text" id="cT6PeratusCelikIqra" placeholder="Peratus Celik Iqra (%)" class="p-2 border rounded text-sm">
+                                <input type="number" id="cT6BilLemahIqra" placeholder="Bil. Lemah Iqra" class="p-2 border rounded text-sm">
+                                <input type="text" id="cT6PeratusLemahIqra" placeholder="Peratus Lemah Iqra (%)" class="p-2 border rounded text-sm">
+                            </div>
+                            <button onclick="addDataTahun6('tasmik')" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm font-bold shadow-sm transition">
+                                Simpan Data Tasmik
+                            </button>
                         </div>
-                        <button onclick="addDataTahun6()" class="w-full bg-green-600 text-white p-2 rounded text-sm font-bold mb-4">
-                            ${editingT6Index === -1 ? 'Simpan Data' : 'Kemaskini Data'}
-                        </button>
-                        <div class="space-y-1">${dataFokusTahun6.map((item, i) => renderAdminItem('Data Fokus Tahun 6 - Murid: ' + item.jumlahMurid, i, 'tahun6')).join('')}</div>
+
+
+                        <!-- JAWI -->
+                        <div class="bg-gray-50 p-3 rounded-lg border mb-4">
+                            <p class="font-bold border-b pb-1 mb-2 text-slate-700">B. JAWI</p>
+                            <select id="cT6FasaJawi" class="w-full p-2 mb-2 border rounded-lg text-sm bg-white focus:ring-indigo-500">
+                                <option value="FASA 1">FASA 1</option><option value="FASA 2">FASA 2</option><option value="FASA 3">FASA 3</option>
+                            </select>
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <input type="number" id="cT6JumlahJawi" placeholder="Jumlah Murid" class="p-2 border rounded text-sm">
+                                <input type="number" id="cT6Tp6" placeholder="Bil. TP 6" class="p-2 border rounded text-sm">
+                                <input type="number" id="cT6Tp5" placeholder="Bil. TP 5" class="p-2 border rounded text-sm">
+                                <input type="number" id="cT6Tp4" placeholder="Bil. TP 4" class="p-2 border rounded text-sm">
+                                <input type="text" id="cT6Peratus456" placeholder="Peratus TP 4,5,6 (%)" class="p-2 border rounded text-sm">
+                                <input type="text" id="cT6Peratus3" placeholder="Peratus TP 3 (%)" class="p-2 border rounded text-sm">
+                                <input type="text" id="cT6Peratus12" placeholder="Peratus TP 1 & 2 (%)" class="p-2 border rounded text-sm">
+                            </div>
+                            <button onclick="addDataTahun6('jawi')" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm font-bold shadow-sm transition">
+                                Simpan Data Jawi
+                            </button>
+                        </div>
+
+
+                        <!-- SOLAT -->
+                        <div class="bg-gray-50 p-3 rounded-lg border mb-4">
+                            <p class="font-bold border-b pb-1 mb-2 text-slate-700">C. SOLAT</p>
+                            <select id="cT6FasaSolat" class="w-full p-2 mb-2 border rounded-lg text-sm bg-white focus:ring-indigo-500">
+                                <option value="FASA 1">FASA 1</option><option value="FASA 2">FASA 2</option><option value="FASA 3">FASA 3</option>
+                            </select>
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <input type="number" id="cT6JumlahSolat" placeholder="Jumlah Murid" class="p-2 border rounded text-sm">
+                                <input type="text" id="cT6PeratusPerlakuan" placeholder="Peratus Perlakuan (%)" class="p-2 border rounded text-sm">
+                                <input type="text" id="cT6PeratusBacaan" placeholder="Peratus Bacaan (%)" class="p-2 border rounded text-sm">
+                                <input type="text" id="cT6PeratusWudhu" placeholder="Peratus Wudhu (%)" class="p-2 border rounded text-sm">
+                            </div>
+                            <button onclick="addDataTahun6('solat')" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm font-bold shadow-sm transition">
+                                Simpan Data Solat
+                            </button>
+                        </div>
+
+
+                        <div class="space-y-1 max-h-48 overflow-y-auto">
+                            ${dataFokusTahun6.map((item, i) => renderAdminItem(`Tahun 6 ${item.kategori ? item.kategori.toUpperCase() : ''} - ${item.fasa || ''}`, i, 'tahun6')).join('')}
+                        </div>
                     </div>
 
-                    <div class="border p-4 rounded-xl">
-                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">4. HEBAHAN TERKINI</h3>
-                        <div class="flex gap-2 mb-3">
-                            <input type="text" id="hebahanInput" placeholder="Hebahan baru..." class="flex-1 p-2 border rounded text-sm">
-                            <button onclick="addHebahan()" class="bg-amber-500 text-white px-4 py-2 rounded text-sm font-bold">Tambah</button>
-                        </div>
-                        <div class="space-y-1">${hebahanList.map((h, i) => renderAdminItem(h.teks, i, 'hebahanList')).join('')}</div>
-                    </div>
 
                     <div class="border p-4 rounded-xl">
                         <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">5. PELAPORAN KESELURUHAN (LINK SHEET)</h3>
                         <div class="flex gap-2 mb-3">
+                            <select id="pTahun" class="p-2 border rounded text-sm">
+                                <option value="2025">2025</option>
+                                <option value="2026">2026</option>
+                                <option value="2027">2027</option>
+                            </select>
                             <select id="pLabel" class="p-2 border rounded text-sm">
-                                <option>Perekodan 1</option>
-                                <option>Perekodan 2</option>
-                                <option>Perekodan 3</option>
+                                <option value="FASA 1">FASA 1</option>
+                                <option value="FASA 2">FASA 2</option>
+                                <option value="FASA 3">FASA 3</option>
                             </select>
                             <input type="text" id="pUrl" placeholder="URL Google Sheet" class="flex-1 p-2 border rounded text-sm">
                             <button onclick="addPelaporan()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Simpan</button>
                         </div>
-                        <div class="space-y-1">${pelaporanLinks.map((p, i) => renderAdminItem(p.label + ': ' + p.url, i, 'pelaporan')).join('')}</div>
+                        <div class="space-y-1">${pelaporanLinks.map((p, i) => renderAdminItem(p.tahun + ' | ' + p.label + ': ' + p.url, i, 'pelaporan')).join('')}</div>
                     </div>
                 </div>
             `;
@@ -319,15 +437,38 @@
             if (editingT6Index !== -1) fillEditT6Form();
         }
 
+
+
+
         function fillEditT6Form() {
             const item = dataFokusTahun6[editingT6Index];
-            document.getElementById('cT6JumlahMurid').value = item.jumlahMurid;
-            document.getElementById('cT6SasaranKhatam').value = item.sasaranKhatam;
-            document.getElementById('cT6BilKhatam').value = item.bilKhatam;
-            document.getElementById('cT6PeratusKhatam').value = item.peratusKhatam;
-            document.getElementById('cT6BilLemahIqra').value = item.bilLemahIqra;
-            document.getElementById('cT6PeratusCelikIqra').value = item.peratusCelikIqra;
+            if (!item.kategori || item.kategori === 'tasmik') {
+                document.getElementById('cT6FasaTasmik').value = item.fasa || 'FASA 1';
+                document.getElementById('cT6JumlahTasmik').value = item.jumlahMurid || '';
+                document.getElementById('cT6BilKhatam').value = item.bilKhatam || '';
+                document.getElementById('cT6PeratusKhatam').value = item.peratusKhatam || '';
+                document.getElementById('cT6BilIqra').value = item.bilIqra || '';
+                document.getElementById('cT6PeratusCelikIqra').value = item.peratusCelikIqra || '';
+                document.getElementById('cT6BilLemahIqra').value = item.bilLemahIqra || '';
+                document.getElementById('cT6PeratusLemahIqra').value = item.peratusLemahIqra || '';
+            } else if (item.kategori === 'jawi') {
+                document.getElementById('cT6FasaJawi').value = item.fasa || 'FASA 1';
+                document.getElementById('cT6JumlahJawi').value = item.jumlahMurid || '';
+                document.getElementById('cT6Tp6').value = item.tp6 || '';
+                document.getElementById('cT6Tp5').value = item.tp5 || '';
+                document.getElementById('cT6Tp4').value = item.tp4 || '';
+                document.getElementById('cT6Peratus456').value = item.peratus456 || '';
+                document.getElementById('cT6Peratus3').value = item.peratus3 || '';
+                document.getElementById('cT6Peratus12').value = item.peratus12 || '';
+            } else if (item.kategori === 'solat') {
+                document.getElementById('cT6FasaSolat').value = item.fasa || 'FASA 1';
+                document.getElementById('cT6JumlahSolat').value = item.jumlahMurid || '';
+                document.getElementById('cT6PeratusPerlakuan').value = item.peratusPerlakuan || '';
+                document.getElementById('cT6PeratusBacaan').value = item.peratusBacaan || '';
+                document.getElementById('cT6PeratusWudhu').value = item.peratusWudhu || '';
+            }
         }
+
 
         function fillEditForm() {
             const item = statusKelasData[editingIndex];
@@ -338,19 +479,96 @@
             for(let i=1;i<=6;i++) document.getElementById('iqra'+i).value = item.tasmik['iqra'+i] || '';
             document.getElementById('alquran').value = item.tasmik.alquran || '';
             for(let i=1;i<=6;i++) document.getElementById('tp'+i).value = item.jawi['tp'+i] || '';
-            document.getElementById('wudhuM').value = item.solat.wudhu.menguasai || ''; 
+            document.getElementById('wudhuM').value = item.solat.wudhu.menguasai || '';
             document.getElementById('wudhuB').value = item.solat.wudhu.belum || '';
-            document.getElementById('perlakuanM').value = item.solat.perlakuan.menguasai || ''; 
+            document.getElementById('perlakuanM').value = item.solat.perlakuan.menguasai || '';
             document.getElementById('perlakuanB').value = item.solat.perlakuan.belum || '';
-            document.getElementById('perbuatanM').value = item.solat.perbuatan.menguasai || ''; 
-            document.getElementById('perbuatanB').value = item.solat.perbuatan.belum || '';
+            document.getElementById('bacaanM').value = item.solat.bacaan.menguasai || '';
+            document.getElementById('bacaanB').value = item.solat.bacaan.belum || '';
         }
 
-        // Simpan Data Baharu ke Firestore
-        async function addClass() { 
+
+        // Fungsi Tarik Data dari Google Sheet URL
+        async function fetchSheetData(url) {
+            try {
+                const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                if(!match) return;
+                const sheetId = match[1];
+                // Tambah &headers=0 supaya Google tidak membuang baris pertama sebagai header secara automatik
+                const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&headers=0`;
+                const res = await fetch(fetchUrl);
+                const text = await res.text();
+                // Filter GViz API json wrapping
+                const jsonStr = text.substring(47, text.length - 2);
+                const json = JSON.parse(jsonStr);
+
+
+                classes = [];
+                // Bermula pada A3 bermaksud index ke-2 dalam tatasusunan (0 = Baris 1, 1 = Baris 2, 2 = Baris 3)
+                const dataRows = json.table.rows.slice(2);
+
+
+                dataRows.forEach(row => {
+                    if(row.c && row.c[0] && row.c[0].v) {
+                        const name = row.c[0].v.toString().trim();
+                        if(name === '') return; // Abaikan jika baris kosong
+                       
+                        // Ambil nilai Lajur B, jika kosong atau tiada nilai, anggap sebagai 'X'
+                        let actionRaw = (row.c[1] && row.c[1].v) ? row.c[1].v.toString().trim().toUpperCase() : 'X';
+                       
+                        let action = 'BELUM ADA TINDAKAN';
+                        if (actionRaw === 'O') action = 'SEDANG DITAKSIR';
+                        else if (actionRaw === 'Y') action = 'TELAH DITAKSIR'; // Kemaskini nama status mengikut kehendak
+                       
+                        classes.push({ name, action });
+                    }
+                });
+               
+                // Sort secara Natural (e.g. 1 Bijak, 1 Cerdik, 2 Pintar)
+                classes.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+               
+                // Kemas kini view selepas berjaya mendapatkan data terbaru
+                if(currentView === 'Utama') renderMainView();
+               
+            } catch(e) {
+                console.error("Ralat memuat turun dari Google Sheet:", e);
+            }
+        }
+
+
+        // Fungsi Simpan Konfigurasi & Segerak Data
+        async function saveSheetConfig() {
+            const btn = document.getElementById('btnSync');
+            btn.innerText = 'Menyimpan...';
+           
             const data = {
-                name: document.getElementById('cName').value, 
-                action: document.getElementById('cAction').value, 
+                fasa: document.getElementById('cFasa').value,
+                url: document.getElementById('cSheetUrl').value,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+           
+            try {
+                await getCollectionRef('config').doc('pengurusan').set(data);
+                btn.innerText = 'Berjaya Disimpan!';
+                btn.classList.replace('bg-indigo-600', 'bg-emerald-500');
+                btn.classList.replace('hover:bg-indigo-700', 'hover:bg-emerald-600');
+               
+                setTimeout(() => {
+                    renderAdminDashboard(); // Render semula dashboard selepas 2 saat
+                }, 2000);
+            } catch (err) {
+                console.error("Gagal menyimpan config:", err);
+                btn.innerText = 'Ralat Menyimpan!';
+                btn.classList.replace('bg-indigo-600', 'bg-red-500');
+            }
+        }
+
+
+        // Simpan Data Baharu ke Firestore
+        async function addClass() {
+            const data = {
+                name: document.getElementById('cName').value,
+                action: document.getElementById('cAction').value,
                 data: document.getElementById('cData').value,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
@@ -363,23 +581,48 @@
             }
         }
        
-        async function addDataTahun6() {
-            const data = {
-                jumlahMurid: document.getElementById('cT6JumlahMurid').value,
-                sasaranKhatam: document.getElementById('cT6SasaranKhatam').value,
-                bilKhatam: document.getElementById('cT6BilKhatam').value,
-                peratusKhatam: document.getElementById('cT6PeratusKhatam').value,
-                bilLemahIqra: document.getElementById('cT6BilLemahIqra').value,
-                peratusCelikIqra: document.getElementById('cT6PeratusCelikIqra').value,
+        async function addDataTahun6(kategoriInput = null) {
+            const kategori = editingT6Index !== -1 ? dataFokusTahun6[editingT6Index].kategori || 'tasmik' : kategoriInput;
+            let data = {
+                kategori: kategori,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
+
+
+            if (kategori === 'tasmik') {
+                data.fasa = document.getElementById('cT6FasaTasmik').value;
+                data.jumlahMurid = document.getElementById('cT6JumlahTasmik').value;
+                data.bilKhatam = document.getElementById('cT6BilKhatam').value;
+                data.peratusKhatam = document.getElementById('cT6PeratusKhatam').value;
+                data.bilIqra = document.getElementById('cT6BilIqra').value;
+                data.peratusCelikIqra = document.getElementById('cT6PeratusCelikIqra').value;
+                data.bilLemahIqra = document.getElementById('cT6BilLemahIqra').value;
+                data.peratusLemahIqra = document.getElementById('cT6PeratusLemahIqra').value;
+            } else if (kategori === 'jawi') {
+                data.fasa = document.getElementById('cT6FasaJawi').value;
+                data.jumlahMurid = document.getElementById('cT6JumlahJawi').value;
+                data.tp6 = document.getElementById('cT6Tp6').value;
+                data.tp5 = document.getElementById('cT6Tp5').value;
+                data.tp4 = document.getElementById('cT6Tp4').value;
+                data.peratus456 = document.getElementById('cT6Peratus456').value;
+                data.peratus3 = document.getElementById('cT6Peratus3').value;
+                data.peratus12 = document.getElementById('cT6Peratus12').value;
+            } else if (kategori === 'solat') {
+                data.fasa = document.getElementById('cT6FasaSolat').value;
+                data.jumlahMurid = document.getElementById('cT6JumlahSolat').value;
+                data.peratusPerlakuan = document.getElementById('cT6PeratusPerlakuan').value;
+                data.peratusBacaan = document.getElementById('cT6PeratusBacaan').value;
+                data.peratusWudhu = document.getElementById('cT6PeratusWudhu').value;
+            }
+
+
             try {
                 if(editingT6Index === -1) {
                     await getCollectionRef('dataFokusTahun6').add(data);
-                } else { 
+                } else {
                     const docId = dataFokusTahun6[editingT6Index].id;
                     await getCollectionRef('dataFokusTahun6').doc(docId).set(data, { merge: true });
-                    editingT6Index = -1; 
+                    editingT6Index = -1;
                 }
                 renderAdminDashboard();
             } catch (err) {
@@ -387,52 +630,55 @@
             }
         }
 
+
+
+
         async function addStatusEntry() {
             const data = {
                 kelas: document.getElementById('sKelas').value,
                 bilMurid: document.getElementById('sBilMurid').value,
                 guru: document.getElementById('sGuru').value,
                 data: document.getElementById('sData').value,
-                tasmik: { 
-                    iqra1: document.getElementById('iqra1').value, 
-                    iqra2: document.getElementById('iqra2').value, 
-                    iqra3: document.getElementById('iqra3').value, 
-                    iqra4: document.getElementById('iqra4').value, 
-                    iqra5: document.getElementById('iqra5').value, 
-                    iqra6: document.getElementById('iqra6').value, 
-                    alquran: document.getElementById('alquran').value 
+                tasmik: {
+                    iqra1: document.getElementById('iqra1').value,
+                    iqra2: document.getElementById('iqra2').value,
+                    iqra3: document.getElementById('iqra3').value,
+                    iqra4: document.getElementById('iqra4').value,
+                    iqra5: document.getElementById('iqra5').value,
+                    iqra6: document.getElementById('iqra6').value,
+                    alquran: document.getElementById('alquran').value
                 },
-                jawi: { 
-                    tp1: document.getElementById('tp1').value, 
-                    tp2: document.getElementById('tp2').value, 
-                    tp3: document.getElementById('tp3').value, 
-                    tp4: document.getElementById('tp4').value, 
-                    tp5: document.getElementById('tp5').value, 
-                    tp6: document.getElementById('tp6').value 
+                jawi: {
+                    tp1: document.getElementById('tp1').value,
+                    tp2: document.getElementById('tp2').value,
+                    tp3: document.getElementById('tp3').value,
+                    tp4: document.getElementById('tp4').value,
+                    tp5: document.getElementById('tp5').value,
+                    tp6: document.getElementById('tp6').value
                 },
-                solat: { 
+                solat: {
                     wudhu: {
-                        menguasai: document.getElementById('wudhuM').value, 
+                        menguasai: document.getElementById('wudhuM').value,
                         belum: document.getElementById('wudhuB').value
-                    }, 
+                    },
                     perlakuan: {
-                        menguasai: document.getElementById('perlakuanM').value, 
+                        menguasai: document.getElementById('perlakuanM').value,
                         belum: document.getElementById('perlakuanB').value
-                    }, 
-                    perbuatan: {
-                        menguasai: document.getElementById('perbuatanM').value, 
-                        belum: document.getElementById('perbuatanB').value
-                    } 
+                    },
+                    bacaan: {
+                        menguasai: document.getElementById('bacaanM').value,
+                        belum: document.getElementById('bacaanB').value
+                    }
                 },
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
             try {
                 if (editingIndex === -1) {
                     await getCollectionRef('statusKelasData').add(data);
-                } else { 
+                } else {
                     const docId = statusKelasData[editingIndex].id;
                     await getCollectionRef('statusKelasData').doc(docId).set(data, { merge: true });
-                    editingIndex = -1; 
+                    editingIndex = -1;
                 }
                 renderAdminDashboard();
             } catch (err) {
@@ -440,7 +686,10 @@
             }
         }
 
-        async function addHebahan() { 
+
+
+
+        async function addHebahan() {
             const text = document.getElementById('hebahanInput').value;
             if(!text.trim()) return;
             const data = {
@@ -457,8 +706,9 @@
         }
        
         async function addPelaporan() {
-            const data = { 
-                label: document.getElementById('pLabel').value, 
+            const data = {
+                tahun: document.getElementById('pTahun').value,
+                label: document.getElementById('pLabel').value,
                 url: document.getElementById('pUrl').value,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
@@ -471,6 +721,9 @@
             }
         }
 
+
+
+
         function renderAdminItem(label, index, type) {
             return `
                 <div class="flex justify-between items-center p-2 bg-gray-100 rounded border text-xs">
@@ -482,19 +735,28 @@
                 </div>`;
         }
 
+
+
+
         function editEntry(type, index) {
-            if(type === 'statusData') { 
-                editingIndex = index; 
-                renderAdminDashboard(); 
-            } else if(type === 'tahun6') { 
-                editingT6Index = index; 
-                renderAdminDashboard(); 
+            if(type === 'statusData') {
+                editingIndex = index;
+                renderAdminDashboard();
+            } else if(type === 'tahun6') {
+                editingT6Index = index;
+                renderAdminDashboard();
             }
         }
+
+
+
 
         async function deleteEntry(type, index) {
             let docId = '';
             let collectionName = '';
+
+
+
 
             if(type === 'classes') {
                 docId = classes[index].id;
@@ -513,6 +775,9 @@
                 collectionName = 'pelaporanLinks';
             }
 
+
+
+
             if(docId && collectionName) {
                 try {
                     await getCollectionRef(collectionName).doc(docId).delete();
@@ -523,97 +788,207 @@
             }
         }
 
+
+
+
         function renderMainView() {
             const hebahanSection = document.getElementById('hebahan-section');
             const displayHebahan = document.getElementById('display-hebahan');
            
             if (currentView === 'Utama') {
                 hebahanSection.classList.remove('hidden');
-                displayHebahan.innerHTML = hebahanList.length > 0 
-                    ? hebahanList.map(h => `<p class="text-blue-700 font-medium text-sm border-b py-1">· ${h.teks}</p>`).join('') 
+                displayHebahan.innerHTML = hebahanList.length > 0
+                    ? hebahanList.map(h => `<p class="text-blue-700 font-medium text-sm border-b py-1">· ${h.teks}</p>`).join('')
                     : '<p class="text-gray-400 text-xs italic">Tiada hebahan terkini.</p>';
             } else {
                 hebahanSection.classList.add('hidden');
             }
+
 
             const container = document.getElementById('list-container');
             const mainTitle = document.getElementById('main-title');
             container.innerHTML = '';
            
             if (currentView === 'Utama') {
-                mainTitle.innerText = "STATUS PEREKODAN JQAF";
-                const groups = {'Belum ada tindakan': [], 'Sedang ditaksir': [], 'Telah ditaksir': []};
-                const statusStyles = { 
-                    'Belum ada tindakan': 'border-red-500 text-red-900', 
-                    'Sedang ditaksir': 'border-amber-500 text-amber-900', 
-                    'Telah ditaksir': 'border-green-500 text-green-900' 
-                };
-                
-                classes.forEach(c => { 
-                    if(groups[c.action]) groups[c.action].push(c); 
+                mainTitle.innerText = `STATUS PEREKODAN JQAF - ${configPengurusan.fasa || 'FASA 1'}`;
+               
+                let belumCount = 0, sedangCount = 0, telahCount = 0;
+                let belumList = [], sedangList = [], telahList = [];
+
+
+                classes.forEach(c => {
+                    if (c.action === 'BELUM ADA TINDAKAN') { belumCount++; belumList.push(c.name); }
+                    else if (c.action === 'SEDANG DITAKSIR') { sedangCount++; sedangList.push(c.name); }
+                    else if (c.action === 'TELAH DITAKSIR' || c.action === 'TELAH DIHANTAR') { telahCount++; telahList.push(c.name); }
                 });
 
-                container.className = "grid grid-cols-1 gap-6";
-                container.innerHTML = Object.keys(groups).map(status => `
-                    <div class="bg-white p-4 rounded-xl border shadow-sm ${statusStyles[status].split(' ')[0]}">
-                        <h3 class="font-bold ${statusStyles[status].split(' ')[1]} mb-3 border-b pb-2 uppercase">${status}</h3>
-                        ${groups[status].length > 0 
-                            ? groups[status].map(item => `<div class="p-3 mb-2 bg-gray-50 rounded-lg border text-xs"><p class="font-bold text-blue-900">${item.name}</p><p class="text-blue-600">${item.data}</p></div>`).join('') 
-                            : '<p class="text-gray-400 text-xs italic">Tiada data.</p>'}
+
+                container.className = "flex flex-col gap-6";
+                container.innerHTML = `
+                    <div class="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-4 w-1/4 uppercase tracking-wider text-xs">Status</th>
+                                    <th class="p-4 text-center w-1/4 uppercase tracking-wider text-xs">Bilangan</th>
+                                    <th class="p-4 w-1/2 uppercase tracking-wider text-xs">Senarai Kelas</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-600">
+                                <tr class="hover:bg-slate-50 transition duration-150">
+                                    <td class="p-4 font-bold text-red-500">BELUM ADA TINDAKAN</td>
+                                    <td class="p-4 text-center font-black text-red-500 text-lg">${belumCount}</td>
+                                    <td class="p-4 leading-relaxed text-xs">${belumList.join(', ') || '-'}</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition duration-150">
+                                    <td class="p-4 font-bold text-amber-500">SEDANG DITAKSIR</td>
+                                    <td class="p-4 text-center font-black text-amber-500 text-lg">${sedangCount}</td>
+                                    <td class="p-4 leading-relaxed text-xs">${sedangList.join(', ') || '-'}</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition duration-150">
+                                    <td class="p-4 font-bold text-emerald-500">TELAH DITAKSIR</td>
+                                    <td class="p-4 text-center font-black text-emerald-500 text-lg">${telahCount}</td>
+                                    <td class="p-4 leading-relaxed text-xs">${telahList.join(', ') || '-'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                `).join('');
+                   
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center">
+                        <h3 class="text-xs font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">Carta Status Keseluruhan Perekodan</h3>
+                        <div class="relative w-full max-w-xs aspect-square">
+                            <canvas id="main-donut-chart"></canvas>
+                        </div>
+                    </div>
+                `;
+
+
+                if (mainDonutChart) mainDonutChart.destroy();
+                const ctxDonut = document.getElementById('main-donut-chart');
+                if (ctxDonut) {
+                    mainDonutChart = new Chart(ctxDonut, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Belum Ada Tindakan', 'Sedang Ditaksir', 'Telah Ditaksir'],
+                            datasets: [{
+                                data: [belumCount, sedangCount, telahCount],
+                                backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
+                                borderWidth: 0,
+                                hoverOffset: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { padding: 20, font: { family: "'Inter', sans-serif", size: 12 }, usePointStyle: true }
+                                }
+                            },
+                            cutout: '75%'
+                        }
+                    });
+                }
             } else if (currentView === 'Pelaporan') {
                 mainTitle.innerText = "PELAPORAN KESELURUHAN";
-                container.className = "grid grid-cols-1 md:grid-cols-3 gap-6";
-                container.innerHTML = pelaporanLinks.length > 0 
-                    ? pelaporanLinks.map(link => `
-                        <a href="${link.url}" target="_blank" class="block bg-white p-8 rounded-xl shadow-lg border-2 border-blue-600 text-center hover:bg-blue-50 transition transform hover:scale-105">
-                            <h3 class="text-xl font-bold text-blue-900">${link.label}</h3>
-                            <p class="text-blue-500 text-sm mt-2 underline">Klik untuk buka Google Sheet</p>
-                        </a>
-                    `).join('') 
-                    : '<p class="text-gray-500 italic">Tiada pautan pelaporan direkodkan dalam Panel Pentadbir.</p>';
+                container.className = "flex flex-col gap-6";
+                container.innerHTML = `
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <div class="flex flex-wrap gap-4 items-end">
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-bold text-slate-500">TAHUN</label>
+                                <select id="searchTahun" class="p-2 border rounded-lg bg-slate-50">
+                                    <option value="2025">2025</option>
+                                    <option value="2026">2026</option>
+                                    <option value="2027">2027</option>
+                                </select>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-bold text-slate-500">PEREKODAN</label>
+                                <select id="searchFasa" class="p-2 border rounded-lg bg-slate-50">
+                                    <option value="FASA 1">FASA 1</option>
+                                    <option value="FASA 2">FASA 2</option>
+                                    <option value="FASA 3">FASA 3</option>
+                                </select>
+                            </div>
+                            <button onclick="searchPdfLink()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700">SUBMIT</button>
+                        </div>
+                        <div id="searchResult" class="mt-6"></div>
+                    </div>
+                `;
             } else if (currentView === 'Tahun6') {
                 mainTitle.innerText = "DATA FOKUS TAHUN 6";
-                container.className = "grid grid-cols-1 gap-6";
-                container.innerHTML = dataFokusTahun6.length > 0 
-                    ? dataFokusTahun6.map(item => `
-                        <div class="bg-white p-6 rounded-xl border-t-8 border-green-500 shadow-lg">
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                    <p class="text-xs text-blue-600 font-bold uppercase">Jumlah Murid</p>
-                                    <p class="text-2xl font-bold text-blue-900">${item.jumlahMurid || 0}</p>
-                                </div>
-                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                    <p class="text-xs text-blue-600 font-bold uppercase">Sasaran Khatam</p>
-                                    <p class="text-2xl font-bold text-blue-900">${item.sasaranKhatam || 0}</p>
-                                </div>
-                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                    <p class="text-xs text-blue-600 font-bold uppercase">Bil. Khatam</p>
-                                    <p class="text-2xl font-bold text-blue-900">${item.bilKhatam || 0}</p>
-                                </div>
-                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                    <p class="text-xs text-blue-600 font-bold uppercase">Peratus Khatam</p>
-                                    <p class="text-2xl font-bold text-blue-900">${item.peratusKhatam || 0}%</p>
-                                </div>
-                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                    <p class="text-xs text-blue-600 font-bold uppercase">Bil. Lemah Iqra</p>
-                                    <p class="text-2xl font-bold text-blue-900">${item.bilLemahIqra || 0}</p>
-                                </div>
-                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                    <p class="text-xs text-blue-600 font-bold uppercase">Peratus Celik Iqra</p>
-                                    <p class="text-2xl font-bold text-blue-900">${item.peratusCelikIqra || 0}%</p>
-                                </div>
-                            </div>
+                container.className = "flex flex-col gap-8";
+               
+                // Helper untuk format jadual
+                const renderTable = (fasa, kategori, title, rows) => {
+                    const d = dataFokusTahun6.find(x => x.kategori === kategori && x.fasa === fasa) || {};
+                    return `
+                    <div class="flex-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="font-bold text-center text-sm text-indigo-800 bg-indigo-50 py-2 rounded mb-3">${fasa}</h4>
+                        <table class="w-full text-xs text-left">
+                            <tbody class="divide-y divide-slate-100">
+                                <tr><td class="py-2 font-semibold">Jumlah Murid</td><td class="py-2 text-right font-bold">${d.jumlahMurid || '-'}</td></tr>
+                                ${rows.map(r => `<tr><td class="py-2">${r.label}</td><td class="py-2 text-right font-bold text-blue-600">${d[r.key] || '-'} ${r.isPct?'%':''}</td></tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>`;
+                };
+
+
+                const tasmikRows = [
+                    {label: 'Bil. Khatam', key: 'bilKhatam'}, {label: 'Peratus Khatam', key: 'peratusKhatam', isPct: true},
+                    {label: 'Bil. Iqra', key: 'bilIqra'}, {label: 'Peratus Celik Iqra', key: 'peratusCelikIqra', isPct: true},
+                    {label: 'Bil. Lemah Iqra', key: 'bilLemahIqra'}, {label: 'Peratus Lemah Iqra', key: 'peratusLemahIqra', isPct: true}
+                ];
+                const jawiRows = [
+                    {label: 'Bilangan TP 6', key: 'tp6'}, {label: 'Bilangan TP 5', key: 'tp5'}, {label: 'Bilangan TP 4', key: 'tp4'},
+                    {label: 'Peratus TP 4,5 & 6', key: 'peratus456', isPct: true}, {label: 'Peratus TP 3', key: 'peratus3', isPct: true}, {label: 'Peratus TP 1 & 2', key: 'peratus12', isPct: true}
+                ];
+                const solatRows = [
+                    {label: 'Peratus Perlakuan', key: 'peratusPerlakuan', isPct: true},
+                    {label: 'Peratus Bacaan', key: 'peratusBacaan', isPct: true},
+                    {label: 'Peratus Wudhu', key: 'peratusWudhu', isPct: true}
+                ];
+
+
+                container.innerHTML = `
+                    <!-- 1. TASMIK -->
+                    <div class="border-t-4 border-blue-500 bg-white p-6 rounded-xl shadow-md">
+                        <h3 class="font-black text-blue-900 mb-4 tracking-wider uppercase text-center border-b pb-3">1. TASMIK</h3>
+                        <div class="flex flex-col md:flex-row gap-4">
+                            ${renderTable('FASA 1', 'tasmik', 'TASMIK', tasmikRows)}
+                            ${renderTable('FASA 2', 'tasmik', 'TASMIK', tasmikRows)}
                         </div>
-                    `).join('') 
-                    : '<p class="text-gray-500 italic">Tiada data fokus tahun 6 direkodkan.</p>';
+                    </div>
+                    <!-- 2. JAWI -->
+                    <div class="border-t-4 border-amber-500 bg-white p-6 rounded-xl shadow-md">
+                        <h3 class="font-black text-amber-900 mb-4 tracking-wider uppercase text-center border-b pb-3">2. JAWI</h3>
+                        <div class="flex flex-col md:flex-row gap-4">
+                            ${renderTable('FASA 1', 'jawi', 'JAWI', jawiRows)}
+                            ${renderTable('FASA 2', 'jawi', 'JAWI', jawiRows)}
+                        </div>
+                    </div>
+                    <!-- 3. SOLAT -->
+                    <div class="border-t-4 border-emerald-500 bg-white p-6 rounded-xl shadow-md">
+                        <h3 class="font-black text-emerald-900 mb-4 tracking-wider uppercase text-center border-b pb-3">3. SOLAT</h3>
+                        <div class="flex flex-col md:flex-row gap-4">
+                            ${renderTable('FASA 1', 'solat', 'SOLAT', solatRows)}
+                            ${renderTable('FASA 2', 'solat', 'SOLAT', solatRows)}
+                        </div>
+                    </div>
+                `;
             } else {
                 mainTitle.innerText = currentView === 'Tasmik' ? "DATA TASMIK" : (currentView === 'Jawi' ? "DATA JAWI" : "DATA SOLAT");
                 container.className = "grid grid-cols-1 md:grid-cols-2 gap-6";
-                
-                if(statusKelasData.length > 0) {
-                    container.innerHTML = statusKelasData.map((item, i) => `
+               
+                const sortedStatus = [...statusKelasData].sort((a, b) =>
+                    a.kelas.localeCompare(b.kelas, undefined, {numeric: true, sensitivity: 'base'})
+                );
+               
+                if(sortedStatus.length > 0) {
+                    container.innerHTML = sortedStatus.map((item, i) => `
                         <div class="bg-white p-4 rounded-xl border shadow-sm">
                             <p class="font-bold text-blue-900 mb-2">${item.kelas} (${item.bilMurid} Murid) - Guru: ${item.guru || '-'}</p>
                             <p class="text-xs text-blue-600 mb-2">${item.data}</p>
@@ -621,69 +996,48 @@
                         </div>
                     `).join('');
 
-                    statusKelasData.forEach((item, i) => {
-                        let labels, data, bg;
-                        if (currentView === 'Tasmik') { 
-                            labels = ['Iqra 1','Iqra 2','Iqra 3','Iqra 4','Iqra 5','Iqra 6', 'Al-Quran']; 
-                            data = [
-                                item.tasmik?.iqra1 || 0, 
-                                item.tasmik?.iqra2 || 0, 
-                                item.tasmik?.iqra3 || 0, 
-                                item.tasmik?.iqra4 || 0, 
-                                item.tasmik?.iqra5 || 0, 
-                                item.tasmik?.iqra6 || 0, 
-                                item.tasmik?.alquran || 0
-                            ]; 
-                            bg = '#3b82f6'; 
-                        } else if (currentView === 'Jawi') { 
-                            labels = ['TP1','TP2','TP3','TP4','TP5','TP6']; 
-                            data = [
-                                item.jawi?.tp1 || 0, 
-                                item.jawi?.tp2 || 0, 
-                                item.jawi?.tp3 || 0, 
-                                item.jawi?.tp4 || 0, 
-                                item.jawi?.tp5 || 0, 
-                                item.jawi?.tp6 || 0
-                            ]; 
-                            bg = '#f59e0b'; 
-                        } else { 
-                            labels = ['Wudhu', 'Perlakuan', 'Perbuatan']; 
-                            data = [
-                                item.solat?.wudhu?.menguasai || 0, 
-                                item.solat?.perlakuan?.menguasai || 0, 
-                                item.solat?.perbuatan?.menguasai || 0
-                            ]; 
-                            bg = '#10b981'; 
-                        }
 
-                        const ctx = document.getElementById(`chart-${i}`);
-                        if (ctx) {
-                            new Chart(ctx, { 
-                                type: 'bar', 
-                                data: { 
-                                    labels, 
-                                    datasets: [{ 
-                                        label: 'Jumlah/Menguasai', 
-                                        data, 
-                                        backgroundColor: bg 
-                                    }] 
-                                },
-                                options: {
-                                    responsive: true,
-                                    scales: {
-                                        y: {
-                                            beginAtZero: true
-                                        }
-                                    }
-                                }
-                            });
+                    sortedStatus.forEach((item, i) => {
+                    let labels, data, bg;
+                    if (currentView === 'Tasmik') {
+                        labels = ['Iqra 1', 'Iqra 2', 'Iqra 3', 'Iqra 4', 'Iqra 5', 'Iqra 6', 'Al-Quran'];
+                        data = [item.tasmik?.iqra1||0, item.tasmik?.iqra2||0, item.tasmik?.iqra3||0, item.tasmik?.iqra4||0, item.tasmik?.iqra5||0, item.tasmik?.iqra6||0, item.tasmik?.alquran||0];
+                        bg = '#3b82f6';
+                    } else if (currentView === 'Jawi') {
+                            labels = ['TP1','TP2','TP3','TP4','TP5','TP6'];
+                            data = [item.jawi?.tp1||0, item.jawi?.tp2||0, item.jawi?.tp3||0, item.jawi?.tp4||0, item.jawi?.tp5||0, item.jawi?.tp6||0];
+                            bg = '#f59e0b';
+                        } else {
+                            labels = ['Wudhu', 'Perlakuan', 'Bacaan'];
+                            data = [item.solat?.wudhu?.menguasai||0, item.solat?.perlakuan?.menguasai||0, item.solat?.bacaan?.menguasai||0];
+                            bg = '#10b981';
                         }
+                        const ctx = document.getElementById(`chart-${i}`);
+                        if (ctx) new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Jumlah/Menguasai', data, backgroundColor: bg }] }, options: { responsive: true } });
                     });
-                } else {
-                    container.innerHTML = '<p class="text-gray-500 italic col-span-2">Tiada data kelas direkodkan.</p>';
                 }
             }
         }
+
+        function searchPdfLink() {
+            const tahun = document.getElementById('searchTahun').value;
+            const fasa = document.getElementById('searchFasa').value;
+            const resultDiv = document.getElementById('searchResult');
+           
+            const found = pelaporanLinks.find(p => p.tahun === tahun && p.label === fasa);
+           
+            if (found) {
+                resultDiv.innerHTML = `
+                    <div class="bg-emerald-50 border border-emerald-200 p-6 rounded-xl text-center">
+                        <p class="text-emerald-800 font-bold mb-2">Data Ditemui untuk ${tahun} - ${fasa}</p>
+                        <a href="${found.url}" target="_blank" class="text-blue-600 font-bold underline text-lg">KLIK UNTUK BUKA DOKUMEN PDF/SHEET</a>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `<p class="text-red-500 font-bold">Tiada data dijumpai bagi pilihan tersebut.</p>`;
+            }
+        }
+
 
         // Mulakan inisialisasi aplikasi
         window.onload = function() {
