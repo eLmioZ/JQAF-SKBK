@@ -27,9 +27,6 @@
 </head>
 <body class="bg-slate-50 flex flex-col min-h-screen text-slate-800">
 
-
-
-
     <header class="bg-indigo-900 text-white p-6 shadow-md">
         <div class="container mx-auto flex justify-between items-center">
             <div>
@@ -45,13 +42,10 @@
         </div>
     </header>
 
-
-
-
     <nav class="bg-white shadow-sm border-b border-slate-200 py-3 sticky top-0 z-40">
         <div class="container mx-auto px-4 flex flex-wrap justify-center gap-2 text-sm font-semibold text-slate-600 items-center">
             <button onclick="changeView('Utama')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">UTAMA</button>
-            <button onclick="changeView('Tasmik')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">DATA TASMIK</button>
+            <button onclick="changeView('Tasmik')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">DATA ALQURAN</button>
             <button onclick="changeView('Jawi')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">DATA JAWI</button>
             <button onclick="changeView('Solat')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">DATA SOLAT</button>
             <button onclick="changeView('Tahun6')" class="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg hover:bg-indigo-200 transition">DATA FOKUS TAHUN 6</button>
@@ -59,16 +53,10 @@
         </div>
     </nav>
 
-
-
-
     <div id="adminPanel" class="fixed inset-0 bg-blue-900 bg-opacity-70 hidden flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div id="adminPanelContent" class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-5xl transition-all max-h-[90vh] overflow-y-auto">
         </div>
     </div>
-
-
-
 
     <main class="container mx-auto p-4 md:p-6 flex-grow">
         <div id="hebahan-section" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
@@ -78,28 +66,20 @@
             </div>
         </div>
 
-
-
-
         <h2 id="main-title" class="text-xl font-bold text-slate-800 mb-6 tracking-tight uppercase">STATUS PEREKODAN JQAF</h2>
         <div id="list-container" class="grid grid-cols-1 gap-6"></div>
     </main>
 
-
-
-
     <footer class="bg-blue-900 text-blue-300 p-6 text-center text-xs mt-auto">
         Hak Cipta Terpelihara @ eLmioZ Designer.
     </footer>
-
-
-
 
     <script>
         let currentView = 'Utama';
         let isLoggedIn = false;
         let editingIndex = -1;
         let editingT6Index = -1;
+        let editingHebahanId = null;
        
         // Memori Tempatan (Akan diisi secara Real-Time dari Firebase)
         let classes = [];
@@ -108,9 +88,22 @@
         let dataFokusTahun6 = [];
         let pelaporanLinks = [];
         let configPengurusan = { fasa: 'FASA 1', url: '' };
-        let mainDonutChart = null;
-        let sheetSyncInterval = null; // Tambahan interval untuk auto-update
+        
+        // Memori khusus untuk pautan Google Sheet Analisis (Tasmik, Jawi, Solat)
+        let configAnalisis = {
+            tasmik: { fasa1: '', fasa2: '', fasa3: '' },
+            jawi: { fasa1: '', fasa2: '', fasa3: '' },
+            solat: { fasa1: '', fasa2: '', fasa3: '' }
+        };
 
+        let analisisData = {
+            tasmik: { fasa1: null, fasa2: null, fasa3: null },
+            jawi: { fasa1: null, fasa2: null, fasa3: null },
+            solat: { fasa1: null, fasa2: null, fasa3: null }
+        };
+
+        let mainDonutChart = null;
+        let sheetSyncInterval = null; 
 
         // Konfigurasi Firebase & Inisialisasi
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'jqaf-sk-bukit-kallam';
@@ -126,40 +119,41 @@
                 measurementId: "G-PBXH02NG6N"
               };
 
-
-
-
         // Inisialisasi Aplikasi Firebase (Compat mode)
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // Memaksa penggunaan Long-Polling untuk kestabilan sandboxed/iframe environment
+        try {
+            db.settings({
+                experimentalForceLongPolling: true
+            });
+            console.log("Firestore ditetapkan kepada mod Long-Polling untuk kestabilan sandboks.");
+        } catch (e) {
+            console.error("Gagal menetapkan konfigurasi Firestore:", e);
+        }
 
-
-
-        // Rujukan Koleksi Firebase mengikut RULE 1
+        // Rujukan Koleksi Firebase
         const getCollectionRef = (collectionName) => {
             return db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName);
         };
 
-
-
-
-        // Mulakan Sesi Autentikasi terlebih dahulu mengikut RULE 3
+        // Mulakan Sesi Autentikasi
         async function initAuthAndData() {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await auth.signInWithCustomToken(__initial_auth_token);
+                } else {
+                    await auth.signInAnonymously();
                 }
             } catch (err) {
                 console.error("Autentikasi gagal:", err);
             }
 
-            // Selepas disahkan, dengar perubahan data secara Real-Time (onSnapshot)
             setupRealtimeListeners();
         }
 
-        // Dengar Perubahan secara Real-Time daripada Firestore
         function setupRealtimeListeners() {
             // 1. Pengurusan Kelas (Dari Config + Google Sheet)
             getCollectionRef('config').doc('pengurusan').onSnapshot(async (doc) => {
@@ -167,19 +161,38 @@
                     configPengurusan = doc.data();
                     if (configPengurusan.url) {
                         await fetchSheetData(configPengurusan.url);
-                       
-                        // Setkan Auto-Update (Tarik data Google Sheet setiap 10 saat)
+                        
                         if(sheetSyncInterval) clearInterval(sheetSyncInterval);
                         sheetSyncInterval = setInterval(() => {
                             fetchSheetData(configPengurusan.url);
-                        }, 10000);
+                        }, 15000);
                     }
                 }
                 renderMainView();
             }, err => console.error("Gagal mendapatkan config kelas:", err));
 
+            // 2. Data Analisis JQAF Google Sheet URL Listener
+            getCollectionRef('config').doc('analisisJqaf').onSnapshot(doc => {
+                if (doc.exists) {
+                    configAnalisis = doc.data();
+                    
+                    // Kemaskini input jika panel terbuka
+                    fillAnalisisInputs();
 
-            // 2. Status Kelas
+                    // Muat turun dan proses helaian Google Sheet bagi setiap kategori dan fasa
+                    ['tasmik', 'jawi', 'solat'].forEach(cat => {
+                        ['fasa1', 'fasa2', 'fasa3'].forEach(fasa => {
+                            const url = configAnalisis[cat]?.[fasa];
+                            if (url) {
+                                fetchAnalisisSheetData(cat, fasa, url);
+                            }
+                        });
+                    });
+                }
+                renderMainView();
+            }, err => console.error("Gagal mendapatkan analisis JQAF:", err));
+
+            // 3. Status Kelas (Manual backup)
             getCollectionRef('statusKelasData').onSnapshot(snapshot => {
                 statusKelasData = [];
                 snapshot.forEach(doc => {
@@ -188,10 +201,7 @@
                 renderMainView();
             }, err => console.error("Gagal mendapatkan status kelas:", err));
 
-
-
-
-            // 3. Data Fokus Tahun 6
+            // 4. Data Fokus Tahun 6
             getCollectionRef('dataFokusTahun6').onSnapshot(snapshot => {
                 dataFokusTahun6 = [];
                 snapshot.forEach(doc => {
@@ -200,10 +210,7 @@
                 renderMainView();
             }, err => console.error("Gagal mendapatkan data tahun 6:", err));
 
-
-
-
-            // 4. Hebahan
+            // 5. Hebahan
             getCollectionRef('hebahanList').onSnapshot(snapshot => {
                 hebahanList = [];
                 snapshot.forEach(doc => {
@@ -212,10 +219,7 @@
                 renderMainView();
             }, err => console.error("Gagal mendapatkan hebahan:", err));
 
-
-
-
-            // 5. Pelaporan Links
+            // 6. Pelaporan Links
             getCollectionRef('pelaporanLinks').onSnapshot(snapshot => {
                 pelaporanLinks = [];
                 snapshot.forEach(doc => {
@@ -225,16 +229,100 @@
             }, err => console.error("Gagal mendapatkan pautan pelaporan:", err));
         }
 
+        async function fetchAnalisisSheetData(category, fasa, url) {
+            if (!url) return;
+            try {
+                const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                if (!match) return;
+                const sheetId = match[1];
+                
+                const gidMatch = url.match(/gid=([0-9]+)/);
+                const gidParam = gidMatch ? `&gid=${gidMatch[1]}` : '';
+                
+                const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&headers=1${gidParam}`;
+                const res = await fetch(fetchUrl);
+                const text = await res.text();
+                
+                const jsonStr = text.substring(47, text.length - 2);
+                const json = JSON.parse(jsonStr);
 
+                const headers = [];
+                if (json.table.cols) {
+                    json.table.cols.forEach(col => {
+                        headers.push(col.label || '');
+                    });
+                }
 
+                const rows = [];
+                if (json.table.rows) {
+                    json.table.rows.forEach(row => {
+                        const rowData = [];
+                        if (row.c) {
+                            row.c.forEach(cell => {
+                                rowData.push(cell ? (cell.f || cell.v || '') : '');
+                            });
+                        }
+                        if (rowData.some(val => val !== '')) {
+                            rows.push(rowData);
+                        }
+                    });
+                }
+
+                if (!analisisData[category]) {
+                    analisisData[category] = {};
+                }
+                analisisData[category][fasa] = { headers, rows };
+
+                if (currentView.toLowerCase() === category.toLowerCase()) {
+                    renderMainView();
+                }
+            } catch (e) {
+                console.error(`Gagal memproses Google Sheet ${category} - ${fasa}:`, e);
+            }
+        }
+
+        // Fungsi Tarik Data status kelas perekodan (Utama)
+        async function fetchSheetData(url) {
+            try {
+                const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                if(!match) return;
+                const sheetId = match[1];
+                const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&headers=0`;
+                const res = await fetch(fetchUrl);
+                const text = await res.text();
+                const jsonStr = text.substring(47, text.length - 2);
+                const json = JSON.parse(jsonStr);
+
+                classes = [];
+                const dataRows = json.table.rows.slice(2);
+
+                dataRows.forEach(row => {
+                    if(row.c && row.c[0] && row.c[0].v) {
+                        const name = row.c[0].v.toString().trim();
+                        if(name === '') return; 
+                        
+                        let actionRaw = (row.c[1] && row.c[1].v) ? row.c[1].v.toString().trim().toUpperCase() : 'X';
+                        
+                        let action = 'BELUM ADA TINDAKAN';
+                        if (actionRaw === 'O') action = 'SEDANG DITAKSIR';
+                        else if (actionRaw === 'Y') action = 'TELAH DITAKSIR'; 
+                        
+                        classes.push({ name, action });
+                    }
+                });
+                
+                classes.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+                if(currentView === 'Utama') renderMainView();
+                
+            } catch(e) {
+                console.error("Ralat memuat turun dari Google Sheet:", e);
+            }
+        }
 
         function changeView(view) {
             currentView = view;
             renderMainView();
         }
-
-
-
 
         function toggleAdmin() {
             const panel = document.getElementById('adminPanel');
@@ -245,13 +333,11 @@
                 } else {
                     editingIndex = -1;
                     editingT6Index = -1;
+                    editingHebahanId = null;
                     renderAdminDashboard();
                 }
             }
         }
-
-
-
 
         function renderLogin() {
             const content = document.getElementById('adminPanelContent');
@@ -266,28 +352,23 @@
             `;
         }
 
-
-
-
         function checkPassword() {
             const pass = document.getElementById('adminPass').value;
             if (pass === 'elmioz1234') {
                 isLoggedIn = true;
                 editingIndex = -1;
                 editingT6Index = -1;
+                editingHebahanId = null;
                 renderAdminDashboard();
             } else {
                 document.getElementById('passError').classList.remove('hidden');
             }
         }
 
-
-
-
         function renderAdminDashboard() {
             const content = document.getElementById('adminPanelContent');
             content.innerHTML = `
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex justify-between items-center mb-6 border-b pb-4">
                     <h2 class="text-2xl font-bold text-blue-900">Panel Pentadbir</h2>
                     <div class="flex gap-2">
                         <button onclick="isLoggedIn = false; toggleAdmin();" class="text-red-600 hover:text-red-800 font-bold text-sm">Log Keluar</button>
@@ -296,6 +377,7 @@
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                    
+                    <!-- 1. PENGURUSAN KELAS -->
                     <div class="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
                         <h3 class="font-bold text-indigo-900 mb-3 border-b pb-2">1. PENGURUSAN KELAS</h3>
                         <select id="cFasa" class="w-full p-2 mb-2 border rounded-lg text-sm bg-slate-50 focus:ring-indigo-500">
@@ -308,45 +390,99 @@
                         <p class="text-[10px] text-slate-500 mt-3 leading-tight">Pastikan helaian Google Sheet disetkan kepada <strong>"Anyone with the link can view"</strong>. <br>Format data bermula baris ke-3 - <strong>A3:</strong> Nama Kelas, <strong>B3:</strong> Status (X = Belum, O = Sedang, Y = Telah).</p>
                     </div>
                    
+                    <!-- 2. DATA ANALISIS JQAF (GOOGLE SHEET PER FASA) -->
                     <div class="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
-                        <h3 class="font-bold text-indigo-900 mb-3 border-b pb-2">2. PEREKODAN DATA MURID</h3>
-                        <input type="text" id="sKelas" placeholder="Nama Kelas" class="w-full p-2 mb-2 border rounded text-sm bg-slate-50">
-                        <input type="number" id="sBilMurid" placeholder="Bilangan Murid" class="w-full p-2 mb-2 border rounded text-sm bg-slate-50">
-                        <input type="text" id="sGuru" placeholder="Nama Guru" class="w-full p-2 mb-2 border rounded text-sm bg-slate-50">
-                        <select id="sData" class="w-full p-2 mb-2 border rounded text-sm bg-slate-50">
-                            <option>Perekodan 1</option>
-                            <option>Perekodan 2</option>
-                            <option>Perekodan 3</option>
-                        </select>
-                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border">
-                            <p class="font-bold border-b pb-1 text-slate-700">DATA TASMIK</p>
-                            <div class="grid grid-cols-2 gap-2">${[1,2,3,4,5,6].map(i => `<input type="text" id="iqra${i}" placeholder="Iqra ${i}" class="p-1 border rounded">`).join('')}</div>
-                            <input type="text" id="alquran" placeholder="Al-Quran" class="w-full p-1 border rounded">
-                        </div>
-                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border">
-                            <p class="font-bold border-b pb-1 text-slate-700">DATA JAWI</p>
-                            <div class="grid grid-cols-3 gap-2">${[1,2,3,4,5,6].map(i => `<input type="text" id="tp${i}" placeholder="TP${i}" class="p-1 border rounded">`).join('')}</div>
-                        </div>
-                        <div class="bg-gray-50 p-3 rounded-lg text-xs space-y-2 mb-4 border">
-                            <p class="font-bold border-b pb-1 text-slate-700">DATA SOLAT</p>
-                            ${['wudhu', 'perlakuan', 'bacaan'].map(k => `
-                                <div class="grid grid-cols-2 gap-1 mb-1 items-center">
-                                    <span class="uppercase font-semibold">${k}:</span>
-                                    <input type="text" id="${k}M" placeholder="Menguasai" class="p-1 border rounded">
-                                    <input type="text" id="${k}B" placeholder="Belum" class="p-1 border rounded">
+                        <h3 class="font-bold text-indigo-900 mb-3 border-b pb-2">2. DATA ANALISIS JQAF</h3>
+                        
+                        <!-- TASMIK -->
+                        <div class="mb-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            <p class="font-bold text-blue-900 text-xs mb-2 uppercase tracking-wide">1. DATA TASMIK</p>
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 1 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1">
+                                        <input type="text" id="urlTasmikFasa1" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
+                                        <button onclick="saveAnalisisUrl('tasmik', 'fasa1')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    </div>
                                 </div>
-                            `).join('')}
+                                <div>
+                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 2 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1">
+                                        <input type="text" id="urlTasmikFasa2" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
+                                        <button onclick="saveAnalisisUrl('tasmik', 'fasa2')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 3 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1">
+                                        <input type="text" id="urlTasmikFasa3" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
+                                        <button onclick="saveAnalisisUrl('tasmik', 'fasa3')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <button onclick="addStatusEntry()" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm font-bold shadow-sm transition">
-                            ${editingIndex === -1 ? 'Simpan Status' : 'Kemaskini Status'}
-                        </button>
-                        <div class="mt-4 space-y-1 max-h-48 overflow-y-auto">${statusKelasData.map((item, i) => renderAdminItem(item.kelas + ' (' + item.data + ')', i, 'statusData')).join('')}</div>
+
+                        <!-- JAWI -->
+                        <div class="mb-4 bg-amber-50 p-3 rounded-lg border border-amber-100">
+                            <p class="font-bold text-amber-900 text-xs mb-2 uppercase tracking-wide">2. DATA JAWI</p>
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 1 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1">
+                                        <input type="text" id="urlJawiFasa1" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
+                                        <button onclick="saveAnalisisUrl('jawi', 'fasa1')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 2 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1">
+                                        <input type="text" id="urlJawiFasa2" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
+                                        <button onclick="saveAnalisisUrl('jawi', 'fasa2')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 3 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1">
+                                        <input type="text" id="urlJawiFasa3" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
+                                        <button onclick="saveAnalisisUrl('jawi', 'fasa3')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SOLAT -->
+                        <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                            <p class="font-bold text-emerald-900 text-xs mb-2 uppercase tracking-wide">3. DATA SOLAT & WUDHU</p>
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 1 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1">
+                                        <input type="text" id="urlSolatFasa1" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
+                                        <button onclick="saveAnalisisUrl('solat', 'fasa1')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 2 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1">
+                                        <input type="text" id="urlSolatFasa2" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
+                                        <button onclick="saveAnalisisUrl('solat', 'fasa2')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 3 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1">
+                                        <input type="text" id="urlSolatFasa3" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
+                                        <button onclick="saveAnalisisUrl('solat', 'fasa3')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-
+                    <!-- 3. DATA FOKUS TAHUN 6 -->
                     <div class="border p-4 rounded-xl md:col-span-2 shadow-sm bg-white border-slate-200">
                         <h3 class="font-bold text-indigo-900 mb-3 border-b pb-2">3. DATA FOKUS TAHUN 6 ${editingT6Index !== -1 ? '(MOD EDIT)' : ''}</h3>
-                       
+                        
                         <!-- TASMIK -->
                         <div class="bg-gray-50 p-3 rounded-lg border mb-4">
                             <p class="font-bold border-b pb-1 mb-2 text-slate-700">A. TASMIK</p>
@@ -363,10 +499,9 @@
                                 <input type="text" id="cT6PeratusLemahIqra" placeholder="Peratus Lemah Iqra (%)" class="p-2 border rounded text-sm">
                             </div>
                             <button onclick="addDataTahun6('tasmik')" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm font-bold shadow-sm transition">
-                                Simpan Data Tasmik
+                                Simpan Data tasmik
                             </button>
                         </div>
-
 
                         <!-- JAWI -->
                         <div class="bg-gray-50 p-3 rounded-lg border mb-4">
@@ -379,6 +514,9 @@
                                 <input type="number" id="cT6Tp6" placeholder="Bil. TP 6" class="p-2 border rounded text-sm">
                                 <input type="number" id="cT6Tp5" placeholder="Bil. TP 5" class="p-2 border rounded text-sm">
                                 <input type="number" id="cT6Tp4" placeholder="Bil. TP 4" class="p-2 border rounded text-sm">
+                                <input type="number" id="cT6Tp3" placeholder="Bil. TP 3" class="p-2 border rounded text-sm">
+                                <input type="number" id="cT6Tp2" placeholder="Bil. TP 2" class="p-2 border rounded text-sm">
+                                <input type="number" id="cT6Tp1" placeholder="Bil. TP 1" class="p-2 border rounded text-sm">
                                 <input type="text" id="cT6Peratus456" placeholder="Peratus TP 4,5,6 (%)" class="p-2 border rounded text-sm">
                                 <input type="text" id="cT6Peratus3" placeholder="Peratus TP 3 (%)" class="p-2 border rounded text-sm">
                                 <input type="text" id="cT6Peratus12" placeholder="Peratus TP 1 & 2 (%)" class="p-2 border rounded text-sm">
@@ -387,7 +525,6 @@
                                 Simpan Data Jawi
                             </button>
                         </div>
-
 
                         <!-- SOLAT -->
                         <div class="bg-gray-50 p-3 rounded-lg border mb-4">
@@ -406,14 +543,27 @@
                             </button>
                         </div>
 
-
                         <div class="space-y-1 max-h-48 overflow-y-auto">
                             ${dataFokusTahun6.map((item, i) => renderAdminItem(`Tahun 6 ${item.kategori ? item.kategori.toUpperCase() : ''} - ${item.fasa || ''}`, i, 'tahun6')).join('')}
                         </div>
                     </div>
 
+                    <!-- 4. HEBAHAN TERKINI -->
+                    <div class="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
+                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">4. HEBAHAN TERKINI</h3>
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="hebahanInput" placeholder="Taip hebahan baharu..." class="flex-1 p-2 border rounded text-sm bg-slate-50">
+                            <button id="btnSaveHebahan" onclick="saveHebahan()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-xs font-bold transition flex-shrink-0">
+                                Simpan Hebahan
+                            </button>
+                        </div>
+                        <div class="space-y-1 max-h-48 overflow-y-auto" id="hebahanAdminList">
+                            ${hebahanList.map((h, i) => renderAdminItem(h.teks, i, 'hebahanList')).join('')}
+                        </div>
+                    </div>
 
-                    <div class="border p-4 rounded-xl">
+                    <!-- 5. PELAPORAN KESELURUHAN (LINK SHEET) -->
+                    <div class="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
                         <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">5. PELAPORAN KESELURUHAN (LINK SHEET)</h3>
                         <div class="flex gap-2 mb-3">
                             <select id="pTahun" class="p-2 border rounded text-sm">
@@ -429,19 +579,78 @@
                             <input type="text" id="pUrl" placeholder="URL Google Sheet" class="flex-1 p-2 border rounded text-sm">
                             <button onclick="addPelaporan()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Simpan</button>
                         </div>
-                        <div class="space-y-1">${pelaporanLinks.map((p, i) => renderAdminItem(p.tahun + ' | ' + p.label + ': ' + p.url, i, 'pelaporan')).join('')}</div>
+                        <div class="space-y-1 max-h-48 overflow-y-auto">${pelaporanLinks.map((p, i) => renderAdminItem(p.tahun + ' | ' + p.label + ': ' + p.url, i, 'pelaporan')).join('')}</div>
                     </div>
                 </div>
             `;
-            if (editingIndex !== -1) fillEditForm();
+            
+            fillAnalisisInputs();
             if (editingT6Index !== -1) fillEditT6Form();
         }
 
+        // Isikan Data Google Sheet URL Analisis ke Input Form
+        function fillAnalisisInputs() {
+            ['tasmik', 'jawi', 'solat'].forEach(cat => {
+                ['fasa1', 'fasa2', 'fasa3'].forEach(fasa => {
+                    const id = `url${cat.charAt(0).toUpperCase() + cat.slice(1)}${fasa.charAt(0).toUpperCase() + fasa.slice(1)}`;
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.value = configAnalisis[cat]?.[fasa] || '';
+                    }
+                });
+            });
+        }
 
+        // Simpan URL Google Sheet Analisis ke Firebase
+        async function saveAnalisisUrl(category, fasa) {
+            const id = `url${category.charAt(0).toUpperCase() + category.slice(1)}${fasa.charAt(0).toUpperCase() + fasa.slice(1)}`;
+            const inputVal = document.getElementById(id).value.trim();
+            
+            if (!configAnalisis[category]) configAnalisis[category] = {};
+            configAnalisis[category][fasa] = inputVal;
 
+            try {
+                await getCollectionRef('config').doc('analisisJqaf').set(configAnalisis, { merge: true });
+                const btn = document.querySelector(`button[onclick="saveAnalisisUrl('${category}', '${fasa}')"]`);
+                if (btn) {
+                    const originalText = btn.innerText;
+                    btn.innerText = "Berjaya!";
+                    btn.classList.add("bg-emerald-500");
+                    setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.classList.remove("bg-emerald-500");
+                    }, 2000);
+                }
+            } catch (err) {
+                console.error("Gagal menyimpan pautan URL analisis:", err);
+            }
+        }
+
+        // Simpan Hebahan ke Firestore
+        async function saveHebahan() {
+            const input = document.getElementById('hebahanInput');
+            const val = input.value.trim();
+            if (!val) return;
+            try {
+                if (editingHebahanId) {
+                    await getCollectionRef('hebahanList').doc(editingHebahanId).update({ teks: val });
+                    editingHebahanId = null;
+                } else {
+                    await getCollectionRef('hebahanList').add({
+                        teks: val,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                input.value = '';
+                renderAdminDashboard();
+            } catch (err) {
+                console.error("Ralat simpan hebahan:", err);
+            }
+        }
 
         function fillEditT6Form() {
             const item = dataFokusTahun6[editingT6Index];
+            if (!item) return;
             if (!item.kategori || item.kategori === 'tasmik') {
                 document.getElementById('cT6FasaTasmik').value = item.fasa || 'FASA 1';
                 document.getElementById('cT6JumlahTasmik').value = item.jumlahMurid || '';
@@ -457,6 +666,9 @@
                 document.getElementById('cT6Tp6').value = item.tp6 || '';
                 document.getElementById('cT6Tp5').value = item.tp5 || '';
                 document.getElementById('cT6Tp4').value = item.tp4 || '';
+                document.getElementById('cT6Tp3').value = item.tp3 || '';
+                document.getElementById('cT6Tp2').value = item.tp2 || '';
+                document.getElementById('cT6Tp1').value = item.tp1 || '';
                 document.getElementById('cT6Peratus456').value = item.peratus456 || '';
                 document.getElementById('cT6Peratus3').value = item.peratus3 || '';
                 document.getElementById('cT6Peratus12').value = item.peratus12 || '';
@@ -469,92 +681,25 @@
             }
         }
 
-
-        function fillEditForm() {
-            const item = statusKelasData[editingIndex];
-            document.getElementById('sKelas').value = item.kelas;
-            document.getElementById('sBilMurid').value = item.bilMurid;
-            document.getElementById('sGuru').value = item.guru || '';
-            document.getElementById('sData').value = item.data;
-            for(let i=1;i<=6;i++) document.getElementById('iqra'+i).value = item.tasmik['iqra'+i] || '';
-            document.getElementById('alquran').value = item.tasmik.alquran || '';
-            for(let i=1;i<=6;i++) document.getElementById('tp'+i).value = item.jawi['tp'+i] || '';
-            document.getElementById('wudhuM').value = item.solat.wudhu.menguasai || '';
-            document.getElementById('wudhuB').value = item.solat.wudhu.belum || '';
-            document.getElementById('perlakuanM').value = item.solat.perlakuan.menguasai || '';
-            document.getElementById('perlakuanB').value = item.solat.perlakuan.belum || '';
-            document.getElementById('bacaanM').value = item.solat.bacaan.menguasai || '';
-            document.getElementById('bacaanB').value = item.solat.bacaan.belum || '';
-        }
-
-
-        // Fungsi Tarik Data dari Google Sheet URL
-        async function fetchSheetData(url) {
-            try {
-                const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-                if(!match) return;
-                const sheetId = match[1];
-                // Tambah &headers=0 supaya Google tidak membuang baris pertama sebagai header secara automatik
-                const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&headers=0`;
-                const res = await fetch(fetchUrl);
-                const text = await res.text();
-                // Filter GViz API json wrapping
-                const jsonStr = text.substring(47, text.length - 2);
-                const json = JSON.parse(jsonStr);
-
-
-                classes = [];
-                // Bermula pada A3 bermaksud index ke-2 dalam tatasusunan (0 = Baris 1, 1 = Baris 2, 2 = Baris 3)
-                const dataRows = json.table.rows.slice(2);
-
-
-                dataRows.forEach(row => {
-                    if(row.c && row.c[0] && row.c[0].v) {
-                        const name = row.c[0].v.toString().trim();
-                        if(name === '') return; // Abaikan jika baris kosong
-                       
-                        // Ambil nilai Lajur B, jika kosong atau tiada nilai, anggap sebagai 'X'
-                        let actionRaw = (row.c[1] && row.c[1].v) ? row.c[1].v.toString().trim().toUpperCase() : 'X';
-                       
-                        let action = 'BELUM ADA TINDAKAN';
-                        if (actionRaw === 'O') action = 'SEDANG DITAKSIR';
-                        else if (actionRaw === 'Y') action = 'TELAH DITAKSIR'; // Kemaskini nama status mengikut kehendak
-                       
-                        classes.push({ name, action });
-                    }
-                });
-               
-                // Sort secara Natural (e.g. 1 Bijak, 1 Cerdik, 2 Pintar)
-                classes.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
-               
-                // Kemas kini view selepas berjaya mendapatkan data terbaru
-                if(currentView === 'Utama') renderMainView();
-               
-            } catch(e) {
-                console.error("Ralat memuat turun dari Google Sheet:", e);
-            }
-        }
-
-
-        // Fungsi Simpan Konfigurasi & Segerak Data
+        // Simpan Konfigurasi Umum (Seksyen 1)
         async function saveSheetConfig() {
             const btn = document.getElementById('btnSync');
             btn.innerText = 'Menyimpan...';
-           
+            
             const data = {
                 fasa: document.getElementById('cFasa').value,
                 url: document.getElementById('cSheetUrl').value,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
-           
+            
             try {
                 await getCollectionRef('config').doc('pengurusan').set(data);
                 btn.innerText = 'Berjaya Disimpan!';
                 btn.classList.replace('bg-indigo-600', 'bg-emerald-500');
                 btn.classList.replace('hover:bg-indigo-700', 'hover:bg-emerald-600');
-               
+                
                 setTimeout(() => {
-                    renderAdminDashboard(); // Render semula dashboard selepas 2 saat
+                    renderAdminDashboard(); 
                 }, 2000);
             } catch (err) {
                 console.error("Gagal menyimpan config:", err);
@@ -562,32 +707,22 @@
                 btn.classList.replace('bg-indigo-600', 'bg-red-500');
             }
         }
-
-
-        // Simpan Data Baharu ke Firestore
-        async function addClass() {
-            const data = {
-                name: document.getElementById('cName').value,
-                action: document.getElementById('cAction').value,
-                data: document.getElementById('cData').value,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            try {
-                await getCollectionRef('classes').add(data);
-                document.getElementById('cName').value = '';
-                renderAdminDashboard();
-            } catch (err) {
-                console.error("Gagal menambah kelas:", err);
-            }
-        }
        
+        // Simpan Data Fokus Tahun 6
         async function addDataTahun6(kategoriInput = null) {
-            const kategori = editingT6Index !== -1 ? dataFokusTahun6[editingT6Index].kategori || 'tasmik' : kategoriInput;
+            // Memastikan editingT6Index sah dan data wujud sebelum mengakses properti
+            const isEditing = editingT6Index !== -1 && dataFokusTahun6[editingT6Index];
+            const kategori = isEditing ? dataFokusTahun6[editingT6Index].kategori : kategoriInput;
+            
+            if (!kategori) {
+                console.error("Kategori tidak dikenalpasti.");
+                return;
+            }
+
             let data = {
                 kategori: kategori,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
-
 
             if (kategori === 'tasmik') {
                 data.fasa = document.getElementById('cT6FasaTasmik').value;
@@ -604,6 +739,9 @@
                 data.tp6 = document.getElementById('cT6Tp6').value;
                 data.tp5 = document.getElementById('cT6Tp5').value;
                 data.tp4 = document.getElementById('cT6Tp4').value;
+                data.tp3 = document.getElementById('cT6Tp3').value;
+                data.tp2 = document.getElementById('cT6Tp2').value;
+                data.tp1 = document.getElementById('cT6Tp1').value;
                 data.peratus456 = document.getElementById('cT6Peratus456').value;
                 data.peratus3 = document.getElementById('cT6Peratus3').value;
                 data.peratus12 = document.getElementById('cT6Peratus12').value;
@@ -615,9 +753,8 @@
                 data.peratusWudhu = document.getElementById('cT6PeratusWudhu').value;
             }
 
-
             try {
-                if(editingT6Index === -1) {
+                if(!isEditing) {
                     await getCollectionRef('dataFokusTahun6').add(data);
                 } else {
                     const docId = dataFokusTahun6[editingT6Index].id;
@@ -629,82 +766,8 @@
                 console.error("Gagal menambah data tahun 6:", err);
             }
         }
-
-
-
-
-        async function addStatusEntry() {
-            const data = {
-                kelas: document.getElementById('sKelas').value,
-                bilMurid: document.getElementById('sBilMurid').value,
-                guru: document.getElementById('sGuru').value,
-                data: document.getElementById('sData').value,
-                tasmik: {
-                    iqra1: document.getElementById('iqra1').value,
-                    iqra2: document.getElementById('iqra2').value,
-                    iqra3: document.getElementById('iqra3').value,
-                    iqra4: document.getElementById('iqra4').value,
-                    iqra5: document.getElementById('iqra5').value,
-                    iqra6: document.getElementById('iqra6').value,
-                    alquran: document.getElementById('alquran').value
-                },
-                jawi: {
-                    tp1: document.getElementById('tp1').value,
-                    tp2: document.getElementById('tp2').value,
-                    tp3: document.getElementById('tp3').value,
-                    tp4: document.getElementById('tp4').value,
-                    tp5: document.getElementById('tp5').value,
-                    tp6: document.getElementById('tp6').value
-                },
-                solat: {
-                    wudhu: {
-                        menguasai: document.getElementById('wudhuM').value,
-                        belum: document.getElementById('wudhuB').value
-                    },
-                    perlakuan: {
-                        menguasai: document.getElementById('perlakuanM').value,
-                        belum: document.getElementById('perlakuanB').value
-                    },
-                    bacaan: {
-                        menguasai: document.getElementById('bacaanM').value,
-                        belum: document.getElementById('bacaanB').value
-                    }
-                },
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            try {
-                if (editingIndex === -1) {
-                    await getCollectionRef('statusKelasData').add(data);
-                } else {
-                    const docId = statusKelasData[editingIndex].id;
-                    await getCollectionRef('statusKelasData').doc(docId).set(data, { merge: true });
-                    editingIndex = -1;
-                }
-                renderAdminDashboard();
-            } catch (err) {
-                console.error("Gagal menambah status kelas:", err);
-            }
-        }
-
-
-
-
-        async function addHebahan() {
-            const text = document.getElementById('hebahanInput').value;
-            if(!text.trim()) return;
-            const data = {
-                teks: text,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            try {
-                await getCollectionRef('hebahanList').add(data);
-                document.getElementById('hebahanInput').value = '';
-                renderAdminDashboard();
-            } catch (err) {
-                console.error("Gagal menambah hebahan:", err);
-            }
-        }
        
+        // Simpan Link Pelaporan Umum ke Firestore
         async function addPelaporan() {
             const data = {
                 tahun: document.getElementById('pTahun').value,
@@ -721,23 +784,18 @@
             }
         }
 
-
-
-
         function renderAdminItem(label, index, type) {
             return `
                 <div class="flex justify-between items-center p-2 bg-gray-100 rounded border text-xs">
                     <span class="truncate mr-2">${label}</span>
                     <div class="flex-shrink-0">
-                        ${(type !== 'hebahanList' && type !== 'pelaporan') ? `<button onclick="editEntry('${type}', ${index})" class="text-blue-600 underline font-bold mr-2">Edit</button>` : ''}
+                        ${(type !== 'pelaporan') ? `<button onclick="editEntry('${type}', ${index})" class="text-blue-600 underline font-bold mr-2">Edit</button>` : ''}
                         <button onclick="deleteEntry('${type}', ${index})" class="text-red-500 underline font-bold">Hapus</button>
                     </div>
                 </div>`;
         }
 
-
-
-
+        // Fungsi Edit Entry di Panel Pentadbir
         function editEntry(type, index) {
             if(type === 'statusData') {
                 editingIndex = index;
@@ -745,18 +803,19 @@
             } else if(type === 'tahun6') {
                 editingT6Index = index;
                 renderAdminDashboard();
+            } else if(type === 'hebahanList') {
+                const item = hebahanList[index];
+                if (!item) return;
+                editingHebahanId = item.id;
+                document.getElementById('hebahanInput').value = item.teks;
+                document.getElementById('btnSaveHebahan').innerText = "Kemaskini Hebahan";
             }
         }
 
-
-
-
+        // Fungsi Padam Entry di Panel Pentadbir
         async function deleteEntry(type, index) {
             let docId = '';
             let collectionName = '';
-
-
-
 
             if(type === 'classes') {
                 docId = classes[index].id;
@@ -775,9 +834,6 @@
                 collectionName = 'pelaporanLinks';
             }
 
-
-
-
             if(docId && collectionName) {
                 try {
                     await getCollectionRef(collectionName).doc(docId).delete();
@@ -788,8 +844,87 @@
             }
         }
 
+        function renderAnalisisTable(category, fasa, title) {
+            // Tetapan Tema Warna Dinamik mengikut Fasa
+            let accentColor = 'border-indigo-500';
+            let bgHeader = 'bg-indigo-50';
+            let textHeader = 'text-indigo-800';
+            let badgeBg = 'bg-indigo-100';
+            
+            if (title.includes('FASA 1')) {
+                accentColor = 'border-blue-500'; bgHeader = 'bg-blue-50/80'; textHeader = 'text-blue-900'; badgeBg = 'bg-blue-100';
+            } else if (title.includes('FASA 2')) {
+                accentColor = 'border-amber-500'; bgHeader = 'bg-amber-50/80'; textHeader = 'text-amber-900'; badgeBg = 'bg-amber-100';
+            } else if (title.includes('FASA 3')) {
+                accentColor = 'border-emerald-500'; bgHeader = 'bg-emerald-50/80'; textHeader = 'text-emerald-900'; badgeBg = 'bg-emerald-100';
+            }
 
+            const data = analisisData[category]?.[fasa];
+            if (!data) {
+                return `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 border-t-4 ${accentColor} overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+                        <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">${title}</h3>
+                        <span class="px-3 py-1 text-[10px] font-bold rounded-full ${badgeBg} ${textHeader} uppercase">${category}</span>
+                    </div>
+                    <div class="p-8 text-center flex flex-col items-center justify-center">
+                        <svg class="w-12 h-12 text-slate-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <p class="text-slate-400 text-sm font-medium">Menunggu muat turun data Google Sheet...</p>
+                        <p class="text-slate-400 text-xs mt-1">Sila pastikan pautan URL betul dan diset kepada "Anyone with the link can view".</p>
+                    </div>
+                </div>`;
+            }
 
+            const headers = data.headers;
+            const rows = data.rows;
+
+            if (rows.length === 0) {
+                return `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 border-t-4 ${accentColor} overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+                        <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">${title}</h3>
+                        <span class="px-3 py-1 text-[10px] font-bold rounded-full ${badgeBg} ${textHeader} uppercase">${category}</span>
+                    </div>
+                    <div class="p-8 text-center">
+                        <p class="text-slate-400 text-sm italic font-medium">Tiada rekod data dijumpai di dalam helaian Google Sheet.</p>
+                    </div>
+                </div>`;
+            }
+
+            let headerHtml = '';
+            headers.forEach(h => {
+                headerHtml += `<th class="p-4 text-left font-bold text-xs uppercase tracking-wider ${textHeader} ${bgHeader} border-b-2 border-slate-200 whitespace-nowrap">${h}</th>`;
+            });
+
+            let rowsHtml = '';
+            rows.forEach((row, rowIndex) => {
+                const rowBg = rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40';
+                rowsHtml += `<tr class="${rowBg} hover:bg-slate-100 transition duration-200 border-b border-slate-100 last:border-0 group">`;
+                row.forEach((cell, cellIndex) => {
+                    const isFirstCell = cellIndex === 0;
+                    rowsHtml += `<td class="p-4 text-sm ${isFirstCell ? 'font-semibold text-slate-700' : 'text-slate-600'} whitespace-nowrap">${cell}</td>`;
+                });
+                rowsHtml += `</tr>`;
+            });
+
+            return `
+            <div class="bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-slate-200 overflow-hidden border-t-4 ${accentColor}">
+                <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">${title}</h3>
+                    <span class="px-3 py-1 text-[10px] font-bold rounded-full ${badgeBg} ${textHeader} uppercase">${category}</span>
+                </div>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-sm text-left border-collapse">
+                        <thead>
+                            <tr>${headerHtml}</tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+        }
 
         function renderMainView() {
             const hebahanSection = document.getElementById('hebahan-section');
@@ -798,12 +933,16 @@
             if (currentView === 'Utama') {
                 hebahanSection.classList.remove('hidden');
                 displayHebahan.innerHTML = hebahanList.length > 0
-                    ? hebahanList.map(h => `<p class="text-blue-700 font-medium text-sm border-b py-1">· ${h.teks}</p>`).join('')
-                    : '<p class="text-gray-400 text-xs italic">Tiada hebahan terkini.</p>';
+                    ? hebahanList.map(h => `
+                        <div class="flex items-start gap-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                            <span class="mt-1.5 w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                            <p class="text-indigo-900 font-medium text-sm leading-relaxed">${h.teks}</p>
+                        </div>
+                    `).join('')
+                    : '<p class="text-slate-400 text-sm italic">Tiada hebahan terkini.</p>';
             } else {
                 hebahanSection.classList.add('hidden');
             }
-
 
             const container = document.getElementById('list-container');
             const mainTitle = document.getElementById('main-title');
@@ -811,85 +950,36 @@
            
             if (currentView === 'Utama') {
                 mainTitle.innerText = `STATUS PEREKODAN JQAF - ${configPengurusan.fasa || 'FASA 1'}`;
-               
-                let belumCount = 0, sedangCount = 0, telahCount = 0;
-                let belumList = [], sedangList = [], telahList = [];
+                
+                // Kumpul senarai kelas mengikut kategori status
+                let belumList = classes.filter(c => c.action === 'BELUM ADA TINDAKAN');
+                let sedangList = classes.filter(c => c.action === 'SEDANG DITAKSIR');
+                let telahList = classes.filter(c => c.action === 'TELAH DITAKSIR' || c.action === 'TELAH DIHANTAR');
 
-
-                classes.forEach(c => {
-                    if (c.action === 'BELUM ADA TINDAKAN') { belumCount++; belumList.push(c.name); }
-                    else if (c.action === 'SEDANG DITAKSIR') { sedangCount++; sedangList.push(c.name); }
-                    else if (c.action === 'TELAH DITAKSIR' || c.action === 'TELAH DIHANTAR') { telahCount++; telahList.push(c.name); }
-                });
-
-
-                container.className = "flex flex-col gap-6";
+                container.className = "grid grid-cols-1 md:grid-cols-3 gap-6";
                 container.innerHTML = `
-                    <div class="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                                <tr>
-                                    <th class="p-4 w-1/4 uppercase tracking-wider text-xs">Status</th>
-                                    <th class="p-4 text-center w-1/4 uppercase tracking-wider text-xs">Bilangan</th>
-                                    <th class="p-4 w-1/2 uppercase tracking-wider text-xs">Senarai Kelas</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100 text-slate-600">
-                                <tr class="hover:bg-slate-50 transition duration-150">
-                                    <td class="p-4 font-bold text-red-500">BELUM ADA TINDAKAN</td>
-                                    <td class="p-4 text-center font-black text-red-500 text-lg">${belumCount}</td>
-                                    <td class="p-4 leading-relaxed text-xs">${belumList.join(', ') || '-'}</td>
-                                </tr>
-                                <tr class="hover:bg-slate-50 transition duration-150">
-                                    <td class="p-4 font-bold text-amber-500">SEDANG DITAKSIR</td>
-                                    <td class="p-4 text-center font-black text-amber-500 text-lg">${sedangCount}</td>
-                                    <td class="p-4 leading-relaxed text-xs">${sedangList.join(', ') || '-'}</td>
-                                </tr>
-                                <tr class="hover:bg-slate-50 transition duration-150">
-                                    <td class="p-4 font-bold text-emerald-500">TELAH DITAKSIR</td>
-                                    <td class="p-4 text-center font-black text-emerald-500 text-lg">${telahCount}</td>
-                                    <td class="p-4 leading-relaxed text-xs">${telahList.join(', ') || '-'}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-red-500">
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Belum Tindakan</p>
+                        <h3 class="text-4xl font-black text-red-600 mb-3">${belumList.length}</h3>
+                        <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider space-y-1 max-h-32 overflow-y-auto">
+                            ${belumList.map(c => `<div>• ${c.name}</div>`).join('') || '<div class="italic text-slate-300">Tiada kelas</div>'}
+                        </div>
                     </div>
-                   
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center">
-                        <h3 class="text-xs font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">Carta Status Keseluruhan Perekodan</h3>
-                        <div class="relative w-full max-w-xs aspect-square">
-                            <canvas id="main-donut-chart"></canvas>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-amber-500">
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Sedang Ditaksir</p>
+                        <h3 class="text-4xl font-black text-amber-600 mb-3">${sedangList.length}</h3>
+                        <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider space-y-1 max-h-32 overflow-y-auto">
+                            ${sedangList.map(c => `<div>• ${c.name}</div>`).join('') || '<div class="italic text-slate-300">Tiada kelas</div>'}
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-emerald-500">
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Telah Ditaksir</p>
+                        <h3 class="text-4xl font-black text-emerald-600 mb-3">${telahList.length}</h3>
+                        <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider space-y-1 max-h-32 overflow-y-auto">
+                            ${telahList.map(c => `<div>• ${c.name}</div>`).join('') || '<div class="italic text-slate-300">Tiada kelas</div>'}
                         </div>
                     </div>
                 `;
-
-
-                if (mainDonutChart) mainDonutChart.destroy();
-                const ctxDonut = document.getElementById('main-donut-chart');
-                if (ctxDonut) {
-                    mainDonutChart = new Chart(ctxDonut, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Belum Ada Tindakan', 'Sedang Ditaksir', 'Telah Ditaksir'],
-                            datasets: [{
-                                data: [belumCount, sedangCount, telahCount],
-                                backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
-                                borderWidth: 0,
-                                hoverOffset: 6
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    position: 'bottom',
-                                    labels: { padding: 20, font: { family: "'Inter', sans-serif", size: 12 }, usePointStyle: true }
-                                }
-                            },
-                            cutout: '75%'
-                        }
-                    });
-                }
             } else if (currentView === 'Pelaporan') {
                 mainTitle.innerText = "PELAPORAN KESELURUHAN";
                 container.className = "flex flex-col gap-6";
@@ -920,7 +1010,7 @@
             } else if (currentView === 'Tahun6') {
                 mainTitle.innerText = "DATA FOKUS TAHUN 6";
                 container.className = "flex flex-col gap-8";
-               
+                
                 // Helper untuk format jadual
                 const renderTable = (fasa, kategori, title, rows) => {
                     const d = dataFokusTahun6.find(x => x.kategori === kategori && x.fasa === fasa) || {};
@@ -936,7 +1026,6 @@
                     </div>`;
                 };
 
-
                 const tasmikRows = [
                     {label: 'Bil. Khatam', key: 'bilKhatam'}, {label: 'Peratus Khatam', key: 'peratusKhatam', isPct: true},
                     {label: 'Bil. Iqra', key: 'bilIqra'}, {label: 'Peratus Celik Iqra', key: 'peratusCelikIqra', isPct: true},
@@ -944,6 +1033,7 @@
                 ];
                 const jawiRows = [
                     {label: 'Bilangan TP 6', key: 'tp6'}, {label: 'Bilangan TP 5', key: 'tp5'}, {label: 'Bilangan TP 4', key: 'tp4'},
+                    {label: 'Bilangan TP 3', key: 'tp3'}, {label: 'Bilangan TP 2', key: 'tp2'}, {label: 'Bilangan TP 1', key: 'tp1'},
                     {label: 'Peratus TP 4,5 & 6', key: 'peratus456', isPct: true}, {label: 'Peratus TP 3', key: 'peratus3', isPct: true}, {label: 'Peratus TP 1 & 2', key: 'peratus12', isPct: true}
                 ];
                 const solatRows = [
@@ -952,70 +1042,46 @@
                     {label: 'Peratus Wudhu', key: 'peratusWudhu', isPct: true}
                 ];
 
-
                 container.innerHTML = `
-                    <!-- 1. TASMIK -->
+                    <!-- 1. TASMIK (3 FASA BERSEBELAHAN) -->
                     <div class="border-t-4 border-blue-500 bg-white p-6 rounded-xl shadow-md">
-                        <h3 class="font-black text-blue-900 mb-4 tracking-wider uppercase text-center border-b pb-3">1. TASMIK</h3>
-                        <div class="flex flex-col md:flex-row gap-4">
-                            ${renderTable('FASA 1', 'tasmik', 'TASMIK', tasmikRows)}
-                            ${renderTable('FASA 2', 'tasmik', 'TASMIK', tasmikRows)}
+                        <h3 class="font-black text-blue-900 mb-4 tracking-wider uppercase text-center border-b pb-3">1. ALQURAN</h3>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            ${renderTable('FASA 1', 'tasmik', 'ALQURAN', tasmikRows)}
+                            ${renderTable('FASA 2', 'tasmik', 'ALQURAN', tasmikRows)}
+                            ${renderTable('FASA 3', 'tasmik', 'ALQURAN', tasmikRows)}
                         </div>
                     </div>
-                    <!-- 2. JAWI -->
+                    <!-- 2. JAWI (3 FASA BERSEBELAHAN) -->
                     <div class="border-t-4 border-amber-500 bg-white p-6 rounded-xl shadow-md">
                         <h3 class="font-black text-amber-900 mb-4 tracking-wider uppercase text-center border-b pb-3">2. JAWI</h3>
-                        <div class="flex flex-col md:flex-row gap-4">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             ${renderTable('FASA 1', 'jawi', 'JAWI', jawiRows)}
                             ${renderTable('FASA 2', 'jawi', 'JAWI', jawiRows)}
+                            ${renderTable('FASA 3', 'jawi', 'JAWI', jawiRows)}
                         </div>
                     </div>
-                    <!-- 3. SOLAT -->
+                    <!-- 3. SOLAT (3 FASA BERSEBELAHAN) -->
                     <div class="border-t-4 border-emerald-500 bg-white p-6 rounded-xl shadow-md">
                         <h3 class="font-black text-emerald-900 mb-4 tracking-wider uppercase text-center border-b pb-3">3. SOLAT</h3>
-                        <div class="flex flex-col md:flex-row gap-4">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             ${renderTable('FASA 1', 'solat', 'SOLAT', solatRows)}
                             ${renderTable('FASA 2', 'solat', 'SOLAT', solatRows)}
+                            ${renderTable('FASA 3', 'solat', 'SOLAT', solatRows)}
                         </div>
                     </div>
                 `;
             } else {
-                mainTitle.innerText = currentView === 'Tasmik' ? "DATA TASMIK" : (currentView === 'Jawi' ? "DATA JAWI" : "DATA SOLAT");
-                container.className = "grid grid-cols-1 md:grid-cols-2 gap-6";
-               
-                const sortedStatus = [...statusKelasData].sort((a, b) =>
-                    a.kelas.localeCompare(b.kelas, undefined, {numeric: true, sensitivity: 'base'})
-                );
-               
-                if(sortedStatus.length > 0) {
-                    container.innerHTML = sortedStatus.map((item, i) => `
-                        <div class="bg-white p-4 rounded-xl border shadow-sm">
-                            <p class="font-bold text-blue-900 mb-2">${item.kelas} (${item.bilMurid} Murid) - Guru: ${item.guru || '-'}</p>
-                            <p class="text-xs text-blue-600 mb-2">${item.data}</p>
-                            <canvas id="chart-${i}"></canvas>
-                        </div>
-                    `).join('');
-
-
-                    sortedStatus.forEach((item, i) => {
-                    let labels, data, bg;
-                    if (currentView === 'Tasmik') {
-                        labels = ['Iqra 1', 'Iqra 2', 'Iqra 3', 'Iqra 4', 'Iqra 5', 'Iqra 6', 'Al-Quran'];
-                        data = [item.tasmik?.iqra1||0, item.tasmik?.iqra2||0, item.tasmik?.iqra3||0, item.tasmik?.iqra4||0, item.tasmik?.iqra5||0, item.tasmik?.iqra6||0, item.tasmik?.alquran||0];
-                        bg = '#3b82f6';
-                    } else if (currentView === 'Jawi') {
-                            labels = ['TP1','TP2','TP3','TP4','TP5','TP6'];
-                            data = [item.jawi?.tp1||0, item.jawi?.tp2||0, item.jawi?.tp3||0, item.jawi?.tp4||0, item.jawi?.tp5||0, item.jawi?.tp6||0];
-                            bg = '#f59e0b';
-                        } else {
-                            labels = ['Wudhu', 'Perlakuan', 'Bacaan'];
-                            data = [item.solat?.wudhu?.menguasai||0, item.solat?.perlakuan?.menguasai||0, item.solat?.bacaan?.menguasai||0];
-                            bg = '#10b981';
-                        }
-                        const ctx = document.getElementById(`chart-${i}`);
-                        if (ctx) new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Jumlah/Menguasai', data, backgroundColor: bg }] }, options: { responsive: true } });
-                    });
-                }
+                // Menjana Paparan Jadual Dinamik bagi Analisis Tasmik, Jawi, & Solat
+                const category = currentView.toLowerCase(); // 'tasmik', 'jawi', 'solat'
+                mainTitle.innerText = currentView === 'Tasmik' ? "DATA ALQURAN" : (currentView === 'Jawi' ? "DATA JAWI" : "DATA SOLAT");
+                container.className = "flex flex-col gap-6";
+                
+                container.innerHTML = `
+                    ${renderAnalisisTable(category, 'fasa1', 'FASA 1')}
+                    ${renderAnalisisTable(category, 'fasa2', 'FASA 2')}
+                    ${renderAnalisisTable(category, 'fasa3', 'FASA 3')}
+                `;
             }
         }
 
@@ -1023,9 +1089,9 @@
             const tahun = document.getElementById('searchTahun').value;
             const fasa = document.getElementById('searchFasa').value;
             const resultDiv = document.getElementById('searchResult');
-           
+            
             const found = pelaporanLinks.find(p => p.tahun === tahun && p.label === fasa);
-           
+            
             if (found) {
                 resultDiv.innerHTML = `
                     <div class="bg-emerald-50 border border-emerald-200 p-6 rounded-xl text-center">
@@ -1037,7 +1103,6 @@
                 resultDiv.innerHTML = `<p class="text-red-500 font-bold">Tiada data dijumpai bagi pilihan tersebut.</p>`;
             }
         }
-
 
         // Mulakan inisialisasi aplikasi
         window.onload = function() {
