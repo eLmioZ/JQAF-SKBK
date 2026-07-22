@@ -23,46 +23,65 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Montserrat', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
     </style>
 </head>
 <body class="bg-slate-50 flex flex-col min-h-screen text-slate-800">
 
-
-    <header class="bg-indigo-900 text-white p-6 shadow-md">
+    <header class="bg-indigo-900 text-white p-6 shadow-md relative z-10">
         <div class="container mx-auto flex justify-between items-center">
             <div>
                 <h1 class="text-2xl font-bold tracking-tight text-white">PELAPORAN JQAF SK BUKIT KALLAM</h1>
                 <p class="text-indigo-200 text-sm">Sistem Pemantauan Data JQAF</p>
             </div>
-            <button onclick="toggleAdmin()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-3 rounded-lg shadow-sm transition duration-300">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-            </button>
+            <div class="flex items-center gap-2.5">
+                <button onclick="if(configPengurusan.url) fetchSheetData(configPengurusan.url); renderMainView();" class="flex items-center gap-2 bg-blue-900 hover:bg-blue-800 text-white px-3 py-2.5 rounded-lg shadow-sm transition duration-300 pointer-events-auto font-extrabold text-xs tracking-wider border border-blue-700/50" title="Kemaskini Data Langsung (Live)">
+                    <span class="relative flex h-2.5 w-2.5">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-300 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+                    </span>
+                    <span>LIVE</span>
+                </button>
+                <button onclick="toggleAdmin()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-3 rounded-lg shadow-sm transition duration-300 pointer-events-auto" title="Panel Pentadbir">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </button>
+            </div>
         </div>
     </header>
 
-
-    <nav class="bg-white shadow-sm border-b border-slate-200 py-3 sticky top-0 z-40">
+    <nav class="bg-white shadow-sm border-b border-slate-200 py-3 sticky top-0 z-30">
         <div class="container mx-auto px-4 flex flex-wrap justify-center gap-2 text-sm font-semibold text-slate-600 items-center">
-            <button onclick="changeView('Utama')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">UTAMA</button>
-            <button onclick="changeView('Tasmik')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">DATA ALQURAN</button>
-            <button onclick="changeView('Jawi')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">DATA JAWI</button>
-            <button onclick="changeView('Solat')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">DATA SOLAT</button>
-            <button onclick="changeView('Tahun6')" class="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg hover:bg-indigo-200 transition">DATA FOKUS TAHUN 6</button>
-            <button onclick="changeView('Pelaporan')" class="bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition">PELAPORAN KESELURUHAN</button>
+            <button onclick="changeView('Utama')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition pointer-events-auto">UTAMA</button>
+            <button onclick="changeView('Tasmik')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition pointer-events-auto">DATA ALQURAN</button>
+            <button onclick="changeView('Jawi')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition pointer-events-auto">DATA JAWI</button>
+            <button onclick="changeView('Solat')" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition pointer-events-auto">DATA SOLAT</button>
+            <button onclick="changeView('Tahun6')" class="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg hover:bg-indigo-200 transition pointer-events-auto">DATA FOKUS TAHUN 6</button>
+            <button onclick="changeView('Pelaporan')" class="bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition pointer-events-auto">MUAT TURUN PELAPORAN</button>
         </div>
     </nav>
 
-
-    <div id="adminPanel" class="fixed inset-0 bg-blue-900 bg-opacity-70 hidden flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div id="adminPanelContent" class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-5xl transition-all max-h-[90vh] overflow-y-auto">
+    <div id="adminPanel" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50 overflow-y-auto pointer-events-none transition-all duration-300">
+        <div id="adminPanelContent" class="bg-slate-50 rounded-3xl shadow-2xl border border-slate-200/80 w-full max-w-5xl transition-all max-h-[92vh] overflow-y-auto pointer-events-auto p-6 md:p-8 custom-scrollbar">
         </div>
     </div>
 
-
-    <main class="container mx-auto p-4 md:p-6 flex-grow">
+    <main class="container mx-auto p-4 md:p-6 flex-grow relative z-0">
         <div id="hebahan-section" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
             <h2 class="text-xs font-bold text-indigo-900 mb-4 uppercase tracking-widest">Hebahan Terkini</h2>
             <div id="display-hebahan" class="space-y-2 text-slate-600">
@@ -70,16 +89,13 @@
             </div>
         </div>
 
-
         <h2 id="main-title" class="text-xl font-bold text-slate-800 mb-6 tracking-tight uppercase">STATUS PEREKODAN JQAF</h2>
         <div id="list-container" class="grid grid-cols-1 gap-6"></div>
     </main>
 
-
-    <footer class="bg-blue-900 text-blue-300 p-6 text-center text-xs mt-auto">
+    <footer class="bg-blue-900 text-blue-300 p-6 text-center text-xs mt-auto relative z-10">
         Hak Cipta Terpelihara @ eLmioZ Designer.
     </footer>
-
 
     <script>
         let currentView = 'Utama';
@@ -87,22 +103,23 @@
         let editingIndex = -1;
         let editingT6Index = -1;
         let editingHebahanId = null;
+        let editingDashboardCardId = null;
+        let selectedAnalisisT6Cat = 'alquran';
+        let activeAdminTab = 'pengurusan';
        
-        // Memori Tempatan (Akan diisi secara Real-Time dari Firebase)
         let classes = [];
         let statusKelasData = [];
         let hebahanList = [];
         let dataFokusTahun6 = [];
+        let dashboardCards = [];
         let pelaporanLinks = [];
         let configPengurusan = { fasa: 'FASA 1', url: '' };
         
-        // Memori khusus untuk pautan Google Sheet Analisis (Tasmik, Jawi, Solat)
         let configAnalisis = {
             tasmik: { fasa1: '', fasa2: '', fasa3: '' },
             jawi: { fasa1: '', fasa2: '', fasa3: '' },
             solat: { fasa1: '', fasa2: '', fasa3: '' }
         };
-
 
         let analisisData = {
             tasmik: { fasa1: null, fasa2: null, fasa3: null },
@@ -110,12 +127,9 @@
             solat: { fasa1: null, fasa2: null, fasa3: null }
         };
 
-
         let mainDonutChart = null;
         let sheetSyncInterval = null; 
 
-
-        // Konfigurasi Firebase & Inisialisasi
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'jqaf-sk-bukit-kallam';
         const firebaseConfig = typeof __firebase_config !== 'undefined'
             ? JSON.parse(__firebase_config)
@@ -129,31 +143,56 @@
                 measurementId: "G-PBXH02NG6N"
               };
 
-
-        // Inisialisasi Aplikasi Firebase (Compat mode)
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-
-        // Memaksa penggunaan Long-Polling untuk kestabilan sandboxed/iframe environment
         try {
             db.settings({
-                experimentalForceLongPolling: true
+                experimentalForceLongPolling: true,
+                useFetchStreams: false
             });
             console.log("Firestore ditetapkan kepada mod Long-Polling untuk kestabilan sandboks.");
         } catch (e) {
-            console.error("Gagal menetapkan konfigurasi Firestore:", e);
+            console.warn("Gagal menetapkan konfigurasi Firestore:", e);
         }
 
-
-        // Rujukan Koleksi Firebase
         const getCollectionRef = (collectionName) => {
             return db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName);
         };
 
+        // Fungsi penapis pintar untuk mengesahkan baris data terisi
+        function isRowFilled(rowData) {
+            if (!rowData || !Array.isArray(rowData)) return false;
 
-        // Mulakan Sesi Autentikasi
+            // Bersihkan setiap sel daripada aksara kosong, dasy, ralat formula
+            const cleaned = rowData.map(val => {
+                if (val === null || val === undefined) return '';
+                let str = String(val).trim();
+                if (str === '-' || str === '–' || str === '—' || str === 'null' || str === 'undefined' || str.startsWith('#')) return '';
+                return str;
+            });
+
+            // Ambil semua sel yang berteks/berisi
+            const nonInitialEmpty = cleaned.filter(val => val !== '');
+            if (nonInitialEmpty.length === 0) return false;
+
+            // Jika hanya 1 sel terisi dan ia hanya nombor siri (cth: Bil 1, 2, 3...), anggap baris kosong
+            if (nonInitialEmpty.length === 1 && !isNaN(nonInitialEmpty[0])) {
+                return false;
+            }
+
+            // Jika Lajur 0 ada nombor (Bil) dan Lajur 1 (Nama/Kelas) kosong tanpa data lain
+            if (cleaned.length > 1 && !isNaN(cleaned[0]) && cleaned[0] !== '' && cleaned[1] === '') {
+                const hasDataInRest = cleaned.slice(2).some(v => v !== '' && isNaN(v));
+                if (!hasDataInRest) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         async function initAuthAndData() {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -162,16 +201,15 @@
                     await auth.signInAnonymously();
                 }
             } catch (err) {
-                console.error("Autentikasi gagal:", err);
+                console.warn("Autentikasi Firebase gagal/luar talian, meneruskan mod aplikasi:", err);
             }
 
-
+            // Memastikan paparan utama terus dirender walaupun Firebase berada dalam mod luar talian
+            renderMainView();
             setupRealtimeListeners();
         }
 
-
         function setupRealtimeListeners() {
-            // 1. Pengurusan Kelas (Dari Config + Google Sheet)
             getCollectionRef('config').doc('pengurusan').onSnapshot(async (doc) => {
                 if (doc.exists) {
                     configPengurusan = doc.data();
@@ -185,19 +223,27 @@
                     }
                 }
                 renderMainView();
-            }, err => console.error("Gagal mendapatkan config kelas:", err));
+            }, err => {
+                console.warn("Firestore luar talian / tidak dapat dicapai (pengurusan):", err);
+                renderMainView();
+            });
 
+            getCollectionRef('dashboardCards').onSnapshot(snapshot => {
+                dashboardCards = [];
+                snapshot.forEach(doc => {
+                    dashboardCards.push({ id: doc.id, ...doc.data() });
+                });
+                renderMainView();
+            }, err => {
+                console.warn("Firestore luar talian (dashboardCards):", err);
+            });
 
-            // 2. Data Analisis JQAF Google Sheet URL Listener
             getCollectionRef('config').doc('analisisJqaf').onSnapshot(doc => {
                 if (doc.exists) {
                     configAnalisis = doc.data();
                     
-                    // Kemaskini input jika panel terbuka
                     fillAnalisisInputs();
 
-
-                    // Muat turun dan proses helaian Google Sheet bagi setiap kategori dan fasa
                     ['tasmik', 'jawi', 'solat'].forEach(cat => {
                         ['fasa1', 'fasa2', 'fasa3'].forEach(fasa => {
                             const url = configAnalisis[cat]?.[fasa];
@@ -208,49 +254,51 @@
                     });
                 }
                 renderMainView();
-            }, err => console.error("Gagal mendapatkan analisis JQAF:", err));
+            }, err => {
+                console.warn("Firestore luar talian / tidak dapat dicapai (analisisJqaf):", err);
+                renderMainView();
+            });
 
-
-            // 3. Status Kelas (Manual backup)
             getCollectionRef('statusKelasData').onSnapshot(snapshot => {
                 statusKelasData = [];
                 snapshot.forEach(doc => {
                     statusKelasData.push({ id: doc.id, ...doc.data() });
                 });
                 renderMainView();
-            }, err => console.error("Gagal mendapatkan status kelas:", err));
+            }, err => {
+                console.warn("Firestore luar talian (statusKelasData):", err);
+            });
 
-
-            // 4. Data Fokus Tahun 6
             getCollectionRef('dataFokusTahun6').onSnapshot(snapshot => {
                 dataFokusTahun6 = [];
                 snapshot.forEach(doc => {
                     dataFokusTahun6.push({ id: doc.id, ...doc.data() });
                 });
                 renderMainView();
-            }, err => console.error("Gagal mendapatkan data tahun 6:", err));
+            }, err => {
+                console.warn("Firestore luar talian (dataFokusTahun6):", err);
+            });
 
-
-            // 5. Hebahan
             getCollectionRef('hebahanList').onSnapshot(snapshot => {
                 hebahanList = [];
                 snapshot.forEach(doc => {
                     hebahanList.push({ id: doc.id, ...doc.data() });
                 });
                 renderMainView();
-            }, err => console.error("Gagal mendapatkan hebahan:", err));
+            }, err => {
+                console.warn("Firestore luar talian (hebahanList):", err);
+            });
 
-
-            // 6. Pelaporan Links
             getCollectionRef('pelaporanLinks').onSnapshot(snapshot => {
                 pelaporanLinks = [];
                 snapshot.forEach(doc => {
                     pelaporanLinks.push({ id: doc.id, ...doc.data() });
                 });
                 renderMainView();
-            }, err => console.error("Gagal mendapatkan pautan pelaporan:", err));
+            }, err => {
+                console.warn("Firestore luar talian (pelaporanLinks):", err);
+            });
         }
-
 
         async function fetchAnalisisSheetData(category, fasa, url) {
             if (!url) return;
@@ -262,43 +310,53 @@
                 const gidMatch = url.match(/gid=([0-9]+)/);
                 const gidParam = gidMatch ? `&gid=${gidMatch[1]}` : '';
                 
-                const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&headers=1${gidParam}`;
+                // Tetapkan julat A1:J8 khusus untuk Data Al-Quran (tasmik)
+                const rangeParam = (category === 'tasmik') ? '&range=A1:J8' : '';
+                
+                const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&headers=1${gidParam}${rangeParam}`;
                 const res = await fetch(fetchUrl);
                 const text = await res.text();
                 
                 const jsonStr = text.substring(47, text.length - 2);
                 const json = JSON.parse(jsonStr);
 
-
                 const headers = [];
                 if (json.table.cols) {
-                    json.table.cols.forEach(col => {
+                    const cols = (category === 'tasmik') ? json.table.cols.slice(0, 10) : json.table.cols;
+                    cols.forEach(col => {
                         headers.push(col.label || '');
                     });
                 }
 
-
                 const rows = [];
                 if (json.table.rows) {
-                    json.table.rows.forEach(row => {
+                    const sourceRows = (category === 'tasmik') ? json.table.rows.slice(0, 7) : json.table.rows;
+                    sourceRows.forEach(row => {
                         const rowData = [];
                         if (row.c) {
-                            row.c.forEach(cell => {
-                                rowData.push(cell ? (cell.f || cell.v || '') : '');
+                            const cells = (category === 'tasmik') ? row.c.slice(0, 10) : row.c;
+                            cells.forEach(cell => {
+                                let val = '';
+                                if (cell) {
+                                    if (cell.f !== undefined && cell.f !== null) {
+                                        val = String(cell.f).trim();
+                                    } else if (cell.v !== undefined && cell.v !== null) {
+                                        val = String(cell.v).trim();
+                                    }
+                                }
+                                rowData.push(val);
                             });
                         }
-                        if (rowData.some(val => val !== '')) {
+                        if (isRowFilled(rowData)) {
                             rows.push(rowData);
                         }
                     });
                 }
 
-
                 if (!analisisData[category]) {
                     analisisData[category] = {};
                 }
                 analisisData[category][fasa] = { headers, rows };
-
 
                 if (currentView.toLowerCase() === category.toLowerCase()) {
                     renderMainView();
@@ -308,8 +366,6 @@
             }
         }
 
-
-        // Fungsi Tarik Data status kelas perekodan (Utama)
         async function fetchSheetData(url) {
             try {
                 const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
@@ -321,27 +377,22 @@
                 const jsonStr = text.substring(47, text.length - 2);
                 const json = JSON.parse(jsonStr);
 
-
                 classes = [];
                 const dataRows = json.table.rows.slice(2);
 
-
                 dataRows.forEach(row => {
-                    if(row.c && row.c[0] && row.c[0].v) {
-                        const name = row.c[0].v.toString().trim();
-                        if(name === '') return; 
-                        
-                        let actionRaw = (row.c[1] && row.c[1].v) ? row.c[1].v.toString().trim().toUpperCase() : 'X';
+                    if(row.c) {
+                        let actionRaw = (row.c[1] && row.c[1].v) ? row.c[1].v.toString().trim().toUpperCase() : ((row.c[0] && row.c[0].v) ? row.c[0].v.toString().trim().toUpperCase() : '');
+                        if (!actionRaw) return;
                         
                         let action = 'BELUM ADA TINDAKAN';
                         if (actionRaw === 'O') action = 'SEDANG DITAKSIR';
                         else if (actionRaw === 'Y') action = 'TELAH DITAKSIR'; 
                         
-                        classes.push({ name, action });
+                        classes.push({ action });
                     }
                 });
                 
-                classes.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
                 if(currentView === 'Utama') renderMainView();
                 
             } catch(e) {
@@ -349,282 +400,434 @@
             }
         }
 
-
         function changeView(view) {
             currentView = view;
             renderMainView();
         }
 
+        function setAnalisisT6Cat(cat) {
+            selectedAnalisisT6Cat = cat;
+            renderMainView();
+        }
 
         function toggleAdmin() {
             const panel = document.getElementById('adminPanel');
             panel.classList.toggle('hidden');
-            if (!panel.classList.contains('hidden')) {
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('pointer-events-auto');
+                panel.classList.add('pointer-events-none');
+            } else {
+                panel.classList.remove('pointer-events-none');
+                panel.classList.add('pointer-events-auto');
                 if (!isLoggedIn) {
                     renderLogin();
                 } else {
                     editingIndex = -1;
                     editingT6Index = -1;
                     editingHebahanId = null;
+                    editingDashboardCardId = null;
                     renderAdminDashboard();
                 }
             }
         }
 
-
         function renderLogin() {
             const content = document.getElementById('adminPanelContent');
             content.innerHTML = `
-                <div class="text-center p-8">
-                    <h2 class="text-2xl font-bold text-blue-900 mb-6">Log Masuk Pentadbir</h2>
-                    <input type="password" id="adminPass" placeholder="Masukkan Kata Laluan" class="w-full max-w-sm p-3 mb-4 border rounded-lg text-center mx-auto block">
-                    <button onclick="checkPassword()" class="w-full max-w-sm bg-blue-800 text-white p-3 rounded-lg font-bold hover:bg-blue-900 mx-auto block">Masuk</button>
-                    <button onclick="toggleAdmin()" class="block w-full text-gray-400 mt-4 text-sm underline">Batal</button>
-                    <p id="passError" class="text-red-500 mt-4 hidden font-bold">Kata laluan salah!</p>
+                <div class="p-4 md:p-8 max-w-md mx-auto text-center">
+                    <div class="w-16 h-16 bg-indigo-100 text-indigo-700 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-200/80 shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-black text-slate-900 tracking-tight mb-1">Akses Pentadbir</h2>
+                    <p class="text-xs text-slate-500 mb-6 font-medium">Sila masukkan ID Admin dan Kata Laluan untuk menguruskan sistem.</p>
+                    
+                    <div class="space-y-3.5 text-left bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">ID Admin</label>
+                            <input type="text" id="adminId" placeholder="Masukkan ID Admin" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Kata Laluan</label>
+                            <input type="password" id="adminPass" placeholder="Masukkan Kata Laluan" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition">
+                        </div>
+                    </div>
+
+                    <button onclick="checkPassword()" class="w-full mt-5 bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-lg transition duration-200 text-sm flex items-center justify-center gap-2">
+                        <span>Log Masuk Pentadbir</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                    </button>
+                    
+                    <p id="passError" class="text-rose-600 text-xs mt-3 hidden font-bold bg-rose-50 py-2.5 px-3 rounded-xl border border-rose-200">ID Admin atau Kata Laluan salah!</p>
+                    
+                    <button onclick="toggleAdmin()" class="block w-full text-slate-400 hover:text-slate-600 mt-5 text-xs font-semibold transition">Batal dan Tutup</button>
                 </div>
             `;
         }
 
-
         function checkPassword() {
+            const id = document.getElementById('adminId').value.trim().toLowerCase();
             const pass = document.getElementById('adminPass').value;
-            if (pass === 'elmioz1234') {
+            if (id === 'wba1003' && pass === 'adminskbk') {
                 isLoggedIn = true;
                 editingIndex = -1;
                 editingT6Index = -1;
                 editingHebahanId = null;
+                editingDashboardCardId = null;
+                activeAdminTab = 'pengurusan';
                 renderAdminDashboard();
             } else {
-                document.getElementById('passError').classList.remove('hidden');
+                const err = document.getElementById('passError');
+                err.innerText = "ID Admin atau Kata Laluan salah!";
+                err.classList.remove('hidden');
             }
         }
 
+        function switchAdminTab(tabId) {
+            activeAdminTab = tabId;
+            renderAdminDashboard();
+        }
 
         function renderAdminDashboard() {
             const content = document.getElementById('adminPanelContent');
             content.innerHTML = `
-                <div class="flex justify-between items-center mb-6 border-b pb-4">
-                    <h2 class="text-2xl font-bold text-blue-900">Panel Pentadbir</h2>
-                    <div class="flex gap-2">
-                        <button onclick="isLoggedIn = false; toggleAdmin();" class="text-red-600 hover:text-red-800 font-bold text-sm">Log Keluar</button>
-                        <button onclick="toggleAdmin()" class="text-gray-500 hover:text-gray-800 font-bold">Tutup X</button>
+                <!-- Admin Header -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-900 text-white flex items-center justify-center font-black shadow-sm shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-lg font-black text-indigo-950 tracking-tight">Panel Pentadbir</h2>
+                                <span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Aktif</span>
+                            </div>
+                            <p class="text-xs text-slate-500 font-medium">Pengurusan & Kemaskini Data Sistem Pelaporan jQAF</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-0 pt-3 sm:pt-0 border-slate-100">
+                        <button onclick="isLoggedIn = false; toggleAdmin();" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-bold text-xs transition flex items-center gap-1.5 border border-rose-200/60">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                            <span>Log Keluar</span>
+                        </button>
+                        <button onclick="toggleAdmin()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition border border-slate-200">Tutup X</button>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                <div class="mb-6 flex items-center gap-2 p-2 bg-slate-100/80 rounded-2xl border border-slate-200/80 text-xs font-bold custom-scrollbar overflow-x-auto whitespace-nowrap">
+                    <button onclick="switchAdminTab('pengurusan')" class="px-3.5 py-2 rounded-xl transition shrink-0 ${activeAdminTab === 'pengurusan' ? 'bg-indigo-900 text-white shadow-sm' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200/80'}">
+                        1. Pengurusan Kelas
+                    </button>
+                    <button onclick="switchAdminTab('analisis')" class="px-3.5 py-2 rounded-xl transition shrink-0 ${activeAdminTab === 'analisis' ? 'bg-indigo-900 text-white shadow-sm' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200/80'}">
+                        2. Data Analisis jQAF
+                    </button>
+                    <button onclick="switchAdminTab('fokus-t6')" class="px-3.5 py-2 rounded-xl transition shrink-0 ${activeAdminTab === 'fokus-t6' ? 'bg-indigo-900 text-white shadow-sm' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200/80'}">
+                        3. Data Fokus Tahun 6
+                    </button>
+                    <button onclick="switchAdminTab('pelaporan')" class="px-3.5 py-2 rounded-xl transition shrink-0 ${activeAdminTab === 'pelaporan' ? 'bg-indigo-900 text-white shadow-sm' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200/80'}">
+                        4. Muat Turun Pelaporan
+                    </button>
+                    <button onclick="switchAdminTab('hebahan')" class="px-3.5 py-2 rounded-xl transition shrink-0 ${activeAdminTab === 'hebahan' ? 'bg-indigo-900 text-white shadow-sm' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200/80'}">
+                        5. Hebahan Terkini
+                    </button>
+                    <button onclick="switchAdminTab('dashboard-cards')" class="px-3.5 py-2 rounded-xl transition shrink-0 ${activeAdminTab === 'dashboard-cards' ? 'bg-indigo-900 text-white shadow-sm' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200/80'}">
+                        6. Kad Dashboard Fokus Tahun 6
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 ${activeAdminTab === 'all' ? 'md:grid-cols-2' : ''} gap-6">
                    
                     <!-- 1. PENGURUSAN KELAS -->
-                    <div class="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
-                        <h3 class="font-bold text-indigo-900 mb-3 border-b pb-2">1. PENGURUSAN KELAS</h3>
-                        <select id="cFasa" class="w-full p-2 mb-2 border rounded-lg text-sm bg-slate-50 focus:ring-indigo-500">
-                            <option value="FASA 1" ${configPengurusan.fasa === 'FASA 1' ? 'selected' : ''}>FASA 1</option>
-                            <option value="FASA 2" ${configPengurusan.fasa === 'FASA 2' ? 'selected' : ''}>FASA 2</option>
-                            <option value="FASA 3" ${configPengurusan.fasa === 'FASA 3' ? 'selected' : ''}>FASA 3</option>
-                        </select>
-                        <input type="text" id="cSheetUrl" placeholder="URL Google Sheet" value="${configPengurusan.url || ''}" class="w-full p-2 mb-3 border rounded-lg text-sm bg-slate-50 focus:ring-indigo-500">
-                        <button id="btnSync" onclick="saveSheetConfig()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg text-sm font-bold shadow-sm transition duration-200">Muat Naik & Segerak Data</button>
-                        <p class="text-[10px] text-slate-500 mt-3 leading-tight">Pastikan helaian Google Sheet disetkan kepada <strong>"Anyone with the link can view"</strong>. <br>Format data bermula baris ke-3 - <strong>A3:</strong> Nama Kelas, <strong>B3:</strong> Status (X = Belum, O = Sedang, Y = Telah).</p>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between ${activeAdminTab === 'all' || activeAdminTab === 'pengurusan' ? '' : 'hidden'}">
+                        <div>
+                            <div class="flex items-center gap-2.5 mb-3 border-b border-slate-100 pb-3">
+                                <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 text-xs font-black flex items-center justify-center shrink-0">1</span>
+                                <h3 class="font-extrabold text-slate-800 text-sm tracking-tight">PENGURUSAN KELAS</h3>
+                            </div>
+                            <div class="space-y-2.5 mb-4">
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Fasa Penilaian</label>
+                                    <select id="cFasa" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-semibold text-slate-700">
+                                        <option value="FASA 1" ${configPengurusan.fasa === 'FASA 1' ? 'selected' : ''}>FASA 1</option>
+                                        <option value="FASA 2" ${configPengurusan.fasa === 'FASA 2' ? 'selected' : ''}>FASA 2</option>
+                                        <option value="FASA 3" ${configPengurusan.fasa === 'FASA 3' ? 'selected' : ''}>FASA 3</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">URL Google Sheet Pengurusan</label>
+                                    <input type="text" id="cSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." value="${configPengurusan.url || ''}" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-mono">
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <button id="btnSync" onclick="saveSheetConfig()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-xl text-xs font-bold shadow-sm transition duration-200">Muat Naik & Segerak Data</button>
+                            <p class="text-[10px] text-slate-400 mt-2.5 leading-tight italic">Pastikan Google Sheet disetkan kepada <strong>"Anyone with the link can view"</strong>.</p>
+                        </div>
                     </div>
                    
                     <!-- 2. DATA ANALISIS JQAF (GOOGLE SHEET PER FASA) -->
-                    <div class="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
-                        <h3 class="font-bold text-indigo-900 mb-3 border-b pb-2">2. DATA ANALISIS JQAF</h3>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm ${activeAdminTab === 'all' || activeAdminTab === 'analisis' ? '' : 'hidden'}">
+                        <div class="flex items-center gap-2.5 mb-3 border-b border-slate-100 pb-3">
+                            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 text-xs font-black flex items-center justify-center shrink-0">2</span>
+                            <h3 class="font-extrabold text-slate-800 text-sm tracking-tight">DATA ANALISIS JQAF</h3>
+                        </div>
                         
                         <!-- TASMIK -->
-                        <div class="mb-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                            <p class="font-bold text-blue-900 text-xs mb-2 uppercase tracking-wide">1. DATA TASMIK</p>
-                            <div class="space-y-2 text-xs">
+                        <div class="mb-3.5 bg-blue-50/70 p-3 rounded-xl border border-blue-100">
+                            <p class="font-black text-blue-900 text-xs mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                                <span>📖</span> DATA TASMIK (AL-QURAN)
+                            </p>
+                            <div class="space-y-2">
                                 <div>
-                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 1 GOOGLE SHEET URL</label>
-                                    <div class="flex gap-1">
-                                        <input type="text" id="urlTasmikFasa1" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
-                                        <button onclick="saveAnalisisUrl('tasmik', 'fasa1')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    <label class="text-[10px] text-slate-500 font-bold block mb-0.5">FASA 1 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1.5">
+                                        <input type="text" id="urlTasmikFasa1" placeholder="Masukkan URL Google Sheet" class="flex-1 p-2 border border-slate-200 rounded-lg text-[11px] bg-white font-mono">
+                                        <button onclick="saveAnalisisUrl('tasmik', 'fasa1')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 2 GOOGLE SHEET URL</label>
-                                    <div class="flex gap-1">
-                                        <input type="text" id="urlTasmikFasa2" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
-                                        <button onclick="saveAnalisisUrl('tasmik', 'fasa2')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    <label class="text-[10px] text-slate-500 font-bold block mb-0.5">FASA 2 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1.5">
+                                        <input type="text" id="urlTasmikFasa2" placeholder="Masukkan URL Google Sheet" class="flex-1 p-2 border border-slate-200 rounded-lg text-[11px] bg-white font-mono">
+                                        <button onclick="saveAnalisisUrl('tasmik', 'fasa2')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 3 GOOGLE SHEET URL</label>
-                                    <div class="flex gap-1">
-                                        <input type="text" id="urlTasmikFasa3" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
-                                        <button onclick="saveAnalisisUrl('tasmik', 'fasa3')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    <label class="text-[10px] text-slate-500 font-bold block mb-0.5">FASA 3 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1.5">
+                                        <input type="text" id="urlTasmikFasa3" placeholder="Masukkan URL Google Sheet" class="flex-1 p-2 border border-slate-200 rounded-lg text-[11px] bg-white font-mono">
+                                        <button onclick="saveAnalisisUrl('tasmik', 'fasa3')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
 
                         <!-- JAWI -->
-                        <div class="mb-4 bg-amber-50 p-3 rounded-lg border border-amber-100">
-                            <p class="font-bold text-amber-900 text-xs mb-2 uppercase tracking-wide">2. DATA JAWI</p>
-                            <div class="space-y-2 text-xs">
+                        <div class="mb-3.5 bg-amber-50/70 p-3 rounded-xl border border-amber-100">
+                            <p class="font-black text-amber-900 text-xs mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                                <span>✍️</span> DATA JAWI
+                            </p>
+                            <div class="space-y-2">
                                 <div>
-                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 1 GOOGLE SHEET URL</label>
-                                    <div class="flex gap-1">
-                                        <input type="text" id="urlJawiFasa1" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
-                                        <button onclick="saveAnalisisUrl('jawi', 'fasa1')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    <label class="text-[10px] text-slate-500 font-bold block mb-0.5">FASA 1 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1.5">
+                                        <input type="text" id="urlJawiFasa1" placeholder="Masukkan URL Google Sheet" class="flex-1 p-2 border border-slate-200 rounded-lg text-[11px] bg-white font-mono">
+                                        <button onclick="saveAnalisisUrl('jawi', 'fasa1')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 2 GOOGLE SHEET URL</label>
-                                    <div class="flex gap-1">
-                                        <input type="text" id="urlJawiFasa2" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
-                                        <button onclick="saveAnalisisUrl('jawi', 'fasa2')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    <label class="text-[10px] text-slate-500 font-bold block mb-0.5">FASA 2 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1.5">
+                                        <input type="text" id="urlJawiFasa2" placeholder="Masukkan URL Google Sheet" class="flex-1 p-2 border border-slate-200 rounded-lg text-[11px] bg-white font-mono">
+                                        <button onclick="saveAnalisisUrl('jawi', 'fasa2')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 3 GOOGLE SHEET URL</label>
-                                    <div class="flex gap-1">
-                                        <input type="text" id="urlJawiFasa3" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
-                                        <button onclick="saveAnalisisUrl('jawi', 'fasa3')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    <label class="text-[10px] text-slate-500 font-bold block mb-0.5">FASA 3 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1.5">
+                                        <input type="text" id="urlJawiFasa3" placeholder="Masukkan URL Google Sheet" class="flex-1 p-2 border border-slate-200 rounded-lg text-[11px] bg-white font-mono">
+                                        <button onclick="saveAnalisisUrl('jawi', 'fasa3')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-
                         <!-- SOLAT -->
-                        <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                            <p class="font-bold text-emerald-900 text-xs mb-2 uppercase tracking-wide">3. DATA SOLAT & WUDHU</p>
-                            <div class="space-y-2 text-xs">
+                        <div class="bg-emerald-50/70 p-3 rounded-xl border border-emerald-100">
+                            <p class="font-black text-emerald-900 text-xs mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                                <span>🕌</span> DATA SOLAT & WUDHU
+                            </p>
+                            <div class="space-y-2">
                                 <div>
-                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 1 GOOGLE SHEET URL</label>
-                                    <div class="flex gap-1">
-                                        <input type="text" id="urlSolatFasa1" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
-                                        <button onclick="saveAnalisisUrl('solat', 'fasa1')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    <label class="text-[10px] text-slate-500 font-bold block mb-0.5">FASA 1 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1.5">
+                                        <input type="text" id="urlSolatFasa1" placeholder="Masukkan URL Google Sheet" class="flex-1 p-2 border border-slate-200 rounded-lg text-[11px] bg-white font-mono">
+                                        <button onclick="saveAnalisisUrl('solat', 'fasa1')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 2 GOOGLE SHEET URL</label>
-                                    <div class="flex gap-1">
-                                        <input type="text" id="urlSolatFasa2" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
-                                        <button onclick="saveAnalisisUrl('solat', 'fasa2')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    <label class="text-[10px] text-slate-500 font-bold block mb-0.5">FASA 2 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1.5">
+                                        <input type="text" id="urlSolatFasa2" placeholder="Masukkan URL Google Sheet" class="flex-1 p-2 border border-slate-200 rounded-lg text-[11px] bg-white font-mono">
+                                        <button onclick="saveAnalisisUrl('solat', 'fasa2')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">FASA 3 GOOGLE SHEET URL</label>
-                                    <div class="flex gap-1">
-                                        <input type="text" id="urlSolatFasa3" placeholder="Masukkan URL Google Sheet" class="flex-1 p-1.5 border rounded text-[11px] bg-white">
-                                        <button onclick="saveAnalisisUrl('solat', 'fasa3')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
+                                    <label class="text-[10px] text-slate-500 font-bold block mb-0.5">FASA 3 GOOGLE SHEET URL</label>
+                                    <div class="flex gap-1.5">
+                                        <input type="text" id="urlSolatFasa3" placeholder="Masukkan URL Google Sheet" class="flex-1 p-2 border border-slate-200 rounded-lg text-[11px] bg-white font-mono">
+                                        <button onclick="saveAnalisisUrl('solat', 'fasa3')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold transition flex-shrink-0 text-[10px]">Simpan</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-
                     <!-- 3. DATA FOKUS TAHUN 6 -->
-                    <div class="border p-4 rounded-xl md:col-span-2 shadow-sm bg-white border-slate-200">
-                        <h3 class="font-bold text-indigo-900 mb-3 border-b pb-2">3. DATA FOKUS TAHUN 6 ${editingT6Index !== -1 ? '(MOD EDIT)' : ''}</h3>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm ${activeAdminTab === 'all' ? 'md:col-span-2' : ''} ${activeAdminTab === 'all' || activeAdminTab === 'fokus-t6' ? '' : 'hidden'}">
+                        <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-3">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 text-xs font-black flex items-center justify-center shrink-0">3</span>
+                                <h3 class="font-extrabold text-slate-800 text-sm tracking-tight">DATA FOKUS TAHUN 6</h3>
+                            </div>
+                            ${editingT6Index !== -1 ? '<span class="bg-amber-100 text-amber-800 font-bold text-xs px-2.5 py-1 rounded-full uppercase">Mod Edit Aktif</span>' : ''}
+                        </div>
                         
-                        <!-- TASMIK -->
-                        <div class="bg-gray-50 p-3 rounded-lg border mb-4">
-                            <p class="font-bold border-b pb-1 mb-2 text-slate-700">A. TASMIK</p>
-                            <select id="cT6FasaTasmik" class="w-full p-2 mb-2 border rounded-lg text-sm bg-white focus:ring-indigo-500">
-                                <option value="FASA 1">FASA 1</option><option value="FASA 2">FASA 2</option><option value="FASA 3">FASA 3</option>
-                            </select>
-                            <div class="grid grid-cols-2 gap-2 mb-2">
-                                <input type="number" id="cT6JumlahTasmik" placeholder="Jumlah Murid" class="p-2 border rounded text-sm">
-                                <input type="number" id="cT6BilKhatam" placeholder="Bil. Khatam" class="p-2 border rounded text-sm">
-                                <input type="text" id="cT6PeratusKhatam" placeholder="Peratus Khatam (%)" class="p-2 border rounded text-sm">
-                                <input type="number" id="cT6BilAlquran" placeholder="Bil. Alquran" class="p-2 border rounded text-sm">
-                                <input type="text" id="cT6PeratusAlquran" placeholder="Peratus Alquran (%)" class="p-2 border rounded text-sm">
-                                <input type="number" id="cT6BilIqra" placeholder="Bil. Iqra" class="p-2 border rounded text-sm">
-                                <input type="text" id="cT6PeratusCelikIqra" placeholder="Peratus Celik Iqra (%)" class="p-2 border rounded text-sm">
-                                <input type="number" id="cT6BilLemahIqra" placeholder="Bil. Lemah Iqra" class="p-2 border rounded text-sm">
-                                <input type="text" id="cT6PeratusLemahIqra" placeholder="Peratus Lemah Iqra (%)" class="p-2 border rounded text-sm">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                            <!-- TASMIK -->
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                                <p class="font-black text-xs text-indigo-950 uppercase border-b border-slate-200 pb-2 mb-3 flex items-center gap-1.5">
+                                    <span>📖</span> A. TASMIK
+                                </p>
+                                <select id="cT6FasaTasmik" class="w-full p-2 mb-2 border rounded-xl text-xs bg-white font-semibold">
+                                    <option value="FASA 1">FASA 1</option><option value="FASA 2">FASA 2</option><option value="FASA 3">FASA 3</option>
+                                </select>
+                                <div class="grid grid-cols-2 gap-2 mb-3">
+                                    <input type="number" id="cT6JumlahTasmik" placeholder="Jumlah Murid" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="number" id="cT6BilKhatam" placeholder="Bil. Khatam" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="text" id="cT6PeratusKhatam" placeholder="Peratus Khatam (%)" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="number" id="cT6BilAlquran" placeholder="Bil. Alquran" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="text" id="cT6PeratusAlquran" placeholder="Peratus Alquran (%)" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="number" id="cT6BilIqra" placeholder="Bil. Iqra" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="text" id="cT6PeratusCelikIqra" placeholder="Peratus Celik Iqra (%)" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="number" id="cT6BilLemahIqra" placeholder="Bil. Lemah Iqra" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="text" id="cT6PeratusLemahIqra" placeholder="Peratus Lemah Iqra (%)" class="p-2 border rounded-xl text-xs bg-white">
+                                </div>
+                                <button onclick="addDataTahun6('tasmik')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-xl text-xs font-bold transition shadow-sm">
+                                    Simpan Data Tasmik
+                                </button>
                             </div>
-                            <button onclick="addDataTahun6('tasmik')" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm font-bold shadow-sm transition">
-                                Simpan Data tasmik
-                            </button>
+
+                            <!-- JAWI -->
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                                <p class="font-black text-xs text-indigo-950 uppercase border-b border-slate-200 pb-2 mb-3 flex items-center gap-1.5">
+                                    <span>✍️</span> B. JAWI
+                                </p>
+                                <select id="cT6FasaJawi" class="w-full p-2 mb-2 border rounded-xl text-xs bg-white font-semibold">
+                                    <option value="FASA 1">FASA 1</option><option value="FASA 2">FASA 2</option><option value="FASA 3">FASA 3</option>
+                                </select>
+                                <div class="grid grid-cols-2 gap-2 mb-3">
+                                    <input type="number" id="cT6JumlahJawi" placeholder="Jumlah Murid" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="number" id="cT6Tp6" placeholder="Bil. TP 6" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="number" id="cT6Tp5" placeholder="Bil. TP 5" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="number" id="cT6Tp4" placeholder="Bil. TP 4" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="number" id="cT6Tp3" placeholder="Bil. TP 3" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="number" id="cT6Tp2" placeholder="Bil. TP 2" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="number" id="cT6Tp1" placeholder="Bil. TP 1" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="text" id="cT6Peratus456" placeholder="Peratus TP 4,5,6 (%)" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="text" id="cT6Peratus3" placeholder="Peratus TP 3 (%)" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="text" id="cT6Peratus12" placeholder="Peratus TP 1 & 2 (%)" class="p-2 border rounded-xl text-xs bg-white">
+                                </div>
+                                <button onclick="addDataTahun6('jawi')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-xl text-xs font-bold transition shadow-sm">
+                                    Simpan Data Jawi
+                                </button>
+                            </div>
+
+                            <!-- SOLAT -->
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                                <p class="font-black text-xs text-indigo-950 uppercase border-b border-slate-200 pb-2 mb-3 flex items-center gap-1.5">
+                                    <span>🕌</span> C. SOLAT
+                                </p>
+                                <select id="cT6FasaSolat" class="w-full p-2 mb-2 border rounded-xl text-xs bg-white font-semibold">
+                                    <option value="FASA 1">FASA 1</option><option value="FASA 2">FASA 2</option><option value="FASA 3">FASA 3</option>
+                                </select>
+                                <div class="grid grid-cols-2 gap-2 mb-3">
+                                    <input type="number" id="cT6JumlahSolat" placeholder="Jumlah Murid" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="text" id="cT6PeratusPerlakuan" placeholder="Peratus Perlakuan (%)" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="text" id="cT6PeratusBacaan" placeholder="Peratus Bacaan (%)" class="p-2 border rounded-xl text-xs bg-white">
+                                    <input type="text" id="cT6PeratusWudhu" placeholder="Peratus Wudhu (%)" class="p-2 border rounded-xl text-xs bg-white">
+                                </div>
+                                <button onclick="addDataTahun6('solat')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-xl text-xs font-bold transition shadow-sm">
+                                    Simpan Data Solat
+                                </button>
+                            </div>
                         </div>
 
-
-                        <!-- JAWI -->
-                        <div class="bg-gray-50 p-3 rounded-lg border mb-4">
-                            <p class="font-bold border-b pb-1 mb-2 text-slate-700">B. JAWI</p>
-                            <select id="cT6FasaJawi" class="w-full p-2 mb-2 border rounded-lg text-sm bg-white focus:ring-indigo-500">
-                                <option value="FASA 1">FASA 1</option><option value="FASA 2">FASA 2</option><option value="FASA 3">FASA 3</option>
-                            </select>
-                            <div class="grid grid-cols-2 gap-2 mb-2">
-                                <input type="number" id="cT6JumlahJawi" placeholder="Jumlah Murid" class="p-2 border rounded text-sm">
-                                <input type="number" id="cT6Tp6" placeholder="Bil. TP 6" class="p-2 border rounded text-sm">
-                                <input type="number" id="cT6Tp5" placeholder="Bil. TP 5" class="p-2 border rounded text-sm">
-                                <input type="number" id="cT6Tp4" placeholder="Bil. TP 4" class="p-2 border rounded text-sm">
-                                <input type="number" id="cT6Tp3" placeholder="Bil. TP 3" class="p-2 border rounded text-sm">
-                                <input type="number" id="cT6Tp2" placeholder="Bil. TP 2" class="p-2 border rounded text-sm">
-                                <input type="number" id="cT6Tp1" placeholder="Bil. TP 1" class="p-2 border rounded text-sm">
-                                <input type="text" id="cT6Peratus456" placeholder="Peratus TP 4,5,6 (%)" class="p-2 border rounded text-sm">
-                                <input type="text" id="cT6Peratus3" placeholder="Peratus TP 3 (%)" class="p-2 border rounded text-sm">
-                                <input type="text" id="cT6Peratus12" placeholder="Peratus TP 1 & 2 (%)" class="p-2 border rounded text-sm">
-                            </div>
-                            <button onclick="addDataTahun6('jawi')" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm font-bold shadow-sm transition">
-                                Simpan Data Jawi
-                            </button>
-                        </div>
-
-
-                        <!-- SOLAT -->
-                        <div class="bg-gray-50 p-3 rounded-lg border mb-4">
-                            <p class="font-bold border-b pb-1 mb-2 text-slate-700">C. SOLAT</p>
-                            <select id="cT6FasaSolat" class="w-full p-2 mb-2 border rounded-lg text-sm bg-white focus:ring-indigo-500">
-                                <option value="FASA 1">FASA 1</option><option value="FASA 2">FASA 2</option><option value="FASA 3">FASA 3</option>
-                            </select>
-                            <div class="grid grid-cols-2 gap-2 mb-2">
-                                <input type="number" id="cT6JumlahSolat" placeholder="Jumlah Murid" class="p-2 border rounded text-sm">
-                                <input type="text" id="cT6PeratusPerlakuan" placeholder="Peratus Perlakuan (%)" class="p-2 border rounded text-sm">
-                                <input type="text" id="cT6PeratusBacaan" placeholder="Peratus Bacaan (%)" class="p-2 border rounded text-sm">
-                                <input type="text" id="cT6PeratusWudhu" placeholder="Peratus Wudhu (%)" class="p-2 border rounded text-sm">
-                            </div>
-                            <button onclick="addDataTahun6('solat')" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm font-bold shadow-sm transition">
-                                Simpan Data Solat
-                            </button>
-                        </div>
-
-
-                        <div class="space-y-1 max-h-48 overflow-y-auto">
+                        <div class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pt-2 border-t border-slate-100">
                             ${dataFokusTahun6.map((item, i) => renderAdminItem(`Tahun 6 ${item.kategori ? item.kategori.toUpperCase() : ''} - ${item.fasa || ''}`, i, 'tahun6')).join('')}
                         </div>
                     </div>
 
-
-                    <!-- 4. HEBAHAN TERKINI -->
-                    <div class="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
-                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">4. HEBAHAN TERKINI</h3>
-                        <div class="flex gap-2 mb-3">
-                            <input type="text" id="hebahanInput" placeholder="Taip hebahan baharu..." class="flex-1 p-2 border rounded text-sm bg-slate-50">
-                            <button id="btnSaveHebahan" onclick="saveHebahan()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-xs font-bold transition flex-shrink-0">
-                                Simpan Hebahan
-                            </button>
+                    <!-- 4. MUAT TURUN PELAPORAN (LINK SHEET) -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between ${activeAdminTab === 'all' || activeAdminTab === 'pelaporan' ? '' : 'hidden'}">
+                        <div>
+                            <div class="flex items-center gap-2.5 mb-3 border-b border-slate-100 pb-3">
+                                <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 text-xs font-black flex items-center justify-center shrink-0">4</span>
+                                <h3 class="font-extrabold text-slate-800 text-sm tracking-tight">MUAT TURUN PELAPORAN (LINK SHEET)</h3>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                                <select id="pTahun" class="p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 font-semibold">
+                                    <option value="2025">2025</option>
+                                    <option value="2026">2026</option>
+                                    <option value="2027">2027</option>
+                                </select>
+                                <select id="pLabel" class="p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 font-semibold">
+                                    <option value="FASA 1">FASA 1</option>
+                                    <option value="FASA 2">FASA 2</option>
+                                    <option value="FASA 3">FASA 3</option>
+                                </select>
+                                <button onclick="addPelaporan()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition">Simpan Link</button>
+                            </div>
+                            <input type="text" id="pUrl" placeholder="URL Google Sheet / PDF Pelaporan" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50 font-mono mb-3">
                         </div>
-                        <div class="space-y-1 max-h-48 overflow-y-auto" id="hebahanAdminList">
+                        <div class="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">${pelaporanLinks.map((p, i) => renderAdminItem(p.tahun + ' | ' + p.label + ': ' + p.url, i, 'pelaporan')).join('')}</div>
+                    </div>
+
+                    <!-- 5. HEBAHAN TERKINI -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between ${activeAdminTab === 'all' || activeAdminTab === 'hebahan' ? '' : 'hidden'}">
+                        <div>
+                            <div class="flex items-center gap-2.5 mb-3 border-b border-slate-100 pb-3">
+                                <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 text-xs font-black flex items-center justify-center shrink-0">5</span>
+                                <h3 class="font-extrabold text-slate-800 text-sm tracking-tight">HEBAHAN TERKINI</h3>
+                            </div>
+                            <div class="flex gap-2 mb-3">
+                                <input type="text" id="hebahanInput" placeholder="Taip hebahan baharu..." class="flex-1 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20">
+                                <button id="btnSaveHebahan" onclick="saveHebahan()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex-shrink-0">
+                                    Simpan
+                                </button>
+                            </div>
+                        </div>
+                        <div class="space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar" id="hebahanAdminList">
                             ${hebahanList.map((h, i) => renderAdminItem(h.teks, i, 'hebahanList')).join('')}
                         </div>
                     </div>
 
-
-                    <!-- 5. PELAPORAN KESELURUHAN (LINK SHEET) -->
-                    <div class="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
-                        <h3 class="font-bold text-blue-900 mb-3 border-b pb-2">5. PELAPORAN KESELURUHAN (LINK SHEET)</h3>
-                        <div class="flex gap-2 mb-3">
-                            <select id="pTahun" class="p-2 border rounded text-sm">
-                                <option value="2025">2025</option>
-                                <option value="2026">2026</option>
-                                <option value="2027">2027</option>
-                            </select>
-                            <select id="pLabel" class="p-2 border rounded text-sm">
-                                <option value="FASA 1">FASA 1</option>
-                                <option value="FASA 2">FASA 2</option>
-                                <option value="FASA 3">FASA 3</option>
-                            </select>
-                            <input type="text" id="pUrl" placeholder="URL Google Sheet" class="flex-1 p-2 border rounded text-sm">
-                            <button onclick="addPelaporan()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Simpan</button>
+                    <!-- 6. KAD DASHBOARD FOKUS TAHUN 6 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm ${activeAdminTab === 'all' ? 'md:col-span-2' : ''} ${activeAdminTab === 'all' || activeAdminTab === 'dashboard-cards' ? '' : 'hidden'}">
+                        <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-3">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 text-xs font-black flex items-center justify-center shrink-0">6</span>
+                                <h3 class="font-extrabold text-slate-800 text-sm tracking-tight">KAD DASHBOARD FOKUS TAHUN 6</h3>
+                            </div>
+                            ${editingDashboardCardId ? '<span class="bg-amber-100 text-amber-800 font-bold text-xs px-2.5 py-1 rounded-full uppercase">Mod Edit Kad</span>' : ''}
                         </div>
-                        <div class="space-y-1 max-h-48 overflow-y-auto">${pelaporanLinks.map((p, i) => renderAdminItem(p.tahun + ' | ' + p.label + ': ' + p.url, i, 'pelaporan')).join('')}</div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Tajuk Kad Dashboard</label>
+                                <select id="dbCardTitle" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50 font-semibold">
+                                    <option value="Peratus Khatam Al-Quran">Peratus Khatam Al-Quran</option>
+                                    <option value="Peratus Celik Al-Quran">Peratus Celik Al-Quran</option>
+                                    <option value="Peratus Jawi (TP3 - TP6)">Peratus Jawi (TP3 - TP6)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Nilai Peratus (%)</label>
+                                <input type="text" id="dbCardValue" placeholder="cth: 85%" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Keterangan / Status</label>
+                                <input type="text" id="dbCardSub" placeholder="cth: Pencapaian Fasa 1" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50">
+                            </div>
+                        </div>
+                        <button id="btnSaveDbCard" onclick="saveDashboardCard()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition mb-3 shadow-sm">
+                            ${editingDashboardCardId ? 'Kemaskini Kad Dashboard' : 'Simpan Kad Dashboard'}
+                        </button>
+                        <div class="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar pt-2 border-t border-slate-100">
+                            ${dashboardCards.map((card, i) => renderAdminItem(`${card.tajuk || ''} : ${card.nilai || '0%'} (${card.keterangan || '-'})`, i, 'dashboardCards')).join('')}
+                        </div>
                     </div>
                 </div>
             `;
@@ -633,8 +836,33 @@
             if (editingT6Index !== -1) fillEditT6Form();
         }
 
+        async function saveDashboardCard() {
+            const tajuk = document.getElementById('dbCardTitle').value.trim();
+            const nilai = document.getElementById('dbCardValue').value.trim();
+            const keterangan = document.getElementById('dbCardSub').value.trim();
 
-        // Isikan Data Google Sheet URL Analisis ke Input Form
+            if (!tajuk || !nilai) return;
+
+            const data = {
+                tajuk: tajuk,
+                nilai: nilai,
+                keterangan: keterangan,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                if (editingDashboardCardId) {
+                    await getCollectionRef('dashboardCards').doc(editingDashboardCardId).update(data);
+                    editingDashboardCardId = null;
+                } else {
+                    await getCollectionRef('dashboardCards').add(data);
+                }
+                renderAdminDashboard();
+            } catch (err) {
+                console.error("Ralat menyimpan kad dashboard:", err);
+            }
+        }
+
         function fillAnalisisInputs() {
             ['tasmik', 'jawi', 'solat'].forEach(cat => {
                 ['fasa1', 'fasa2', 'fasa3'].forEach(fasa => {
@@ -647,15 +875,12 @@
             });
         }
 
-
-        // Simpan URL Google Sheet Analisis ke Firebase
         async function saveAnalisisUrl(category, fasa) {
             const id = `url${category.charAt(0).toUpperCase() + category.slice(1)}${fasa.charAt(0).toUpperCase() + fasa.slice(1)}`;
             const inputVal = document.getElementById(id).value.trim();
             
             if (!configAnalisis[category]) configAnalisis[category] = {};
             configAnalisis[category][fasa] = inputVal;
-
 
             try {
                 await getCollectionRef('config').doc('analisisJqaf').set(configAnalisis, { merge: true });
@@ -674,8 +899,6 @@
             }
         }
 
-
-        // Simpan Hebahan ke Firestore
         async function saveHebahan() {
             const input = document.getElementById('hebahanInput');
             const val = input.value.trim();
@@ -696,7 +919,6 @@
                 console.error("Ralat simpan hebahan:", err);
             }
         }
-
 
         function fillEditT6Form() {
             const item = dataFokusTahun6[editingT6Index];
@@ -733,8 +955,6 @@
             }
         }
 
-
-        // Simpan Konfigurasi Umum (Seksyen 1)
         async function saveSheetConfig() {
             const btn = document.getElementById('btnSync');
             btn.innerText = 'Menyimpan...';
@@ -761,7 +981,6 @@
             }
         }
        
-        // Simpan Data Fokus Tahun 6
         async function addDataTahun6(kategoriInput = null) {
             const kategori = editingT6Index !== -1 ? dataFokusTahun6[editingT6Index].kategori || 'tasmik' : kategoriInput;
             let data = {
@@ -800,7 +1019,6 @@
                 data.peratusWudhu = document.getElementById('cT6PeratusWudhu').value;
             }
 
-
             try {
                 if(editingT6Index === -1) {
                     await getCollectionRef('dataFokusTahun6').add(data);
@@ -815,7 +1033,6 @@
             }
         }
        
-        // Simpan Link Pelaporan Umum ke Firestore
         async function addPelaporan() {
             const data = {
                 tahun: document.getElementById('pTahun').value,
@@ -832,20 +1049,17 @@
             }
         }
 
-
         function renderAdminItem(label, index, type) {
             return `
-                <div class="flex justify-between items-center p-2 bg-gray-100 rounded border text-xs">
-                    <span class="truncate mr-2">${label}</span>
-                    <div class="flex-shrink-0">
-                        ${(type !== 'pelaporan') ? `<button onclick="editEntry('${type}', ${index})" class="text-blue-600 underline font-bold mr-2">Edit</button>` : ''}
-                        <button onclick="deleteEntry('${type}', ${index})" class="text-red-500 underline font-bold">Hapus</button>
+                <div class="flex justify-between items-center p-2.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/80 text-xs transition duration-150">
+                    <span class="truncate mr-2 font-medium text-slate-700">${label}</span>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        ${(type !== 'pelaporan') ? `<button onclick="editEntry('${type}', ${index})" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-[11px] transition">Edit</button>` : ''}
+                        <button onclick="deleteEntry('${type}', ${index})" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg text-[11px] transition">Hapus</button>
                     </div>
                 </div>`;
         }
 
-
-        // Fungsi Edit Entry di Panel Pentadbir
         function editEntry(type, index) {
             if(type === 'statusData') {
                 editingIndex = index;
@@ -859,15 +1073,20 @@
                 editingHebahanId = item.id;
                 document.getElementById('hebahanInput').value = item.teks;
                 document.getElementById('btnSaveHebahan').innerText = "Kemaskini Hebahan";
+            } else if(type === 'dashboardCards') {
+                const item = dashboardCards[index];
+                if (!item) return;
+                editingDashboardCardId = item.id;
+                document.getElementById('dbCardTitle').value = item.tajuk || 'Peratus Khatam Al-Quran';
+                document.getElementById('dbCardValue').value = item.nilai || '';
+                document.getElementById('dbCardSub').value = item.keterangan || '';
+                document.getElementById('btnSaveDbCard').innerText = "Kemaskini Kad Dashboard";
             }
         }
 
-
-        // Fungsi Padam Entry di Panel Pentadbir
         async function deleteEntry(type, index) {
             let docId = '';
             let collectionName = '';
-
 
             if(type === 'classes') {
                 docId = classes[index].id;
@@ -884,8 +1103,10 @@
             } else if(type === 'pelaporan') {
                 docId = pelaporanLinks[index].id;
                 collectionName = 'pelaporanLinks';
+            } else if(type === 'dashboardCards') {
+                docId = dashboardCards[index].id;
+                collectionName = 'dashboardCards';
             }
-
 
             if(docId && collectionName) {
                 try {
@@ -897,9 +1118,7 @@
             }
         }
 
-
         function renderAnalisisTable(category, fasa, title) {
-            // Tetapan Tema Warna Dinamik mengikut Fasa
             let accentColor = 'border-indigo-500';
             let bgHeader = 'bg-indigo-50';
             let textHeader = 'text-indigo-800';
@@ -912,7 +1131,6 @@
             } else if (title.includes('FASA 3')) {
                 accentColor = 'border-emerald-500'; bgHeader = 'bg-emerald-50/80'; textHeader = 'text-emerald-900'; badgeBg = 'bg-emerald-100';
             }
-
 
             const data = analisisData[category]?.[fasa];
             if (!data) {
@@ -930,62 +1148,79 @@
                 </div>`;
             }
 
-
-            const headers = data.headers;
-            const rows = data.rows;
-
-
-            if (rows.length === 0) {
-                return `
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 border-t-4 ${accentColor} overflow-hidden">
-                    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                        <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">${title}</h3>
-                        <span class="px-3 py-1 text-[10px] font-bold rounded-full ${badgeBg} ${textHeader} uppercase">${category}</span>
-                    </div>
-                    <div class="p-8 text-center">
-                        <p class="text-slate-400 text-sm italic font-medium">Tiada rekod data dijumpai di dalam helaian Google Sheet.</p>
-                    </div>
-                </div>`;
-            }
-
-
-            let headerHtml = '';
-            headers.forEach(h => {
-                headerHtml += `<th class="p-4 text-left font-bold text-xs uppercase tracking-wider ${textHeader} ${bgHeader} border-b-2 border-slate-200 whitespace-nowrap">${h}</th>`;
-            });
-
-
-            let rowsHtml = '';
-            rows.forEach((row, rowIndex) => {
-                const rowBg = rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40';
-                rowsHtml += `<tr class="${rowBg} hover:bg-slate-100 transition duration-200 border-b border-slate-100 last:border-0 group">`;
-                row.forEach((cell, cellIndex) => {
-                    const isFirstCell = cellIndex === 0;
-                    rowsHtml += `<td class="p-4 text-sm ${isFirstCell ? 'font-semibold text-slate-700' : 'text-slate-600'} whitespace-nowrap">${cell}</td>`;
-                });
-                rowsHtml += `</tr>`;
-            });
-
-
             return `
-            <div class="bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-slate-200 overflow-hidden border-t-4 ${accentColor}">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 border-t-4 ${accentColor} overflow-hidden">
                 <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
                     <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">${title}</h3>
                     <span class="px-3 py-1 text-[10px] font-bold rounded-full ${badgeBg} ${textHeader} uppercase">${category}</span>
                 </div>
                 <div class="overflow-x-auto custom-scrollbar">
-                    <table class="w-full text-sm text-left border-collapse">
+                    <table class="w-full text-xs text-left border-collapse">
                         <thead>
-                            <tr>${headerHtml}</tr>
+                            <tr class="${bgHeader} border-b border-slate-200">
+                                ${data.headers.map(h => `<th class="p-3 text-slate-700 font-extrabold uppercase whitespace-nowrap">${h}</th>`).join('')}
+                            </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            ${rowsHtml}
+                            ${data.rows.map((r, i) => `
+                                <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-indigo-50/30 transition">
+                                    ${r.map((c, ci) => `<td class="p-3 ${ci === 0 ? 'font-bold text-slate-800' : 'text-slate-600'} whitespace-nowrap">${c || '-'}</td>`).join('')}
+                                </tr>
+                            `).join('')}
                         </tbody>
                     </table>
                 </div>
             </div>`;
         }
 
+        function renderDashboardCardsHtml() {
+            const defaultCards = [
+                { tajuk: "Peratus Khatam Al-Quran", nilai: "0%", keterangan: "Maklumat Fasa Terkini", color: "emerald", icon: "📖" },
+                { tajuk: "Peratus Celik Al-Quran", nilai: "0%", keterangan: "Maklumat Fasa Terkini", color: "blue", icon: "✨" },
+                { tajuk: "Peratus Jawi (TP3 - TP6)", nilai: "0%", keterangan: "Maklumat Fasa Terkini", color: "purple", icon: "✍️" }
+            ];
+
+            const cardsToDisplay = dashboardCards.length > 0 ? dashboardCards : defaultCards;
+
+            const colorClasses = {
+                emerald: { border: 'border-l-emerald-500', text: 'text-emerald-600', bg: 'bg-emerald-50' },
+                blue: { border: 'border-l-blue-500', text: 'text-blue-600', bg: 'bg-blue-50' },
+                purple: { border: 'border-l-purple-500', text: 'text-purple-600', bg: 'bg-purple-50' }
+            };
+
+            return cardsToDisplay.map((card, idx) => {
+                let palette = colorClasses.emerald;
+                let defaultIcon = "📖";
+                
+                const t = (card.tajuk || '').toLowerCase();
+                if (t.includes('celik')) {
+                    palette = colorClasses.blue;
+                    defaultIcon = "✨";
+                } else if (t.includes('jawi')) {
+                    palette = colorClasses.purple;
+                    defaultIcon = "✍️";
+                } else if (idx === 1) {
+                    palette = colorClasses.blue;
+                    defaultIcon = "✨";
+                } else if (idx === 2) {
+                    palette = colorClasses.purple;
+                    defaultIcon = "✍️";
+                }
+
+                return `
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 ${palette.border} flex flex-col justify-between">
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="text-xs font-black text-slate-500 uppercase tracking-wider">${card.tajuk || 'KAD DASHBOARD'}</p>
+                            <span class="text-base">${defaultIcon}</span>
+                        </div>
+                        <div class="my-1">
+                            <h3 class="text-3xl font-black ${palette.text}">${card.nilai || '0%'}</h3>
+                        </div>
+                        <p class="text-[11px] font-semibold text-slate-400 mt-1">${card.keterangan || 'Data Fokus Tahun 6'}</p>
+                    </div>
+                `;
+            }).join('');
+        }
 
         function renderMainView() {
             const hebahanSection = document.getElementById('hebahan-section');
@@ -1005,7 +1240,6 @@
                 hebahanSection.classList.add('hidden');
             }
 
-
             const container = document.getElementById('list-container');
             const mainTitle = document.getElementById('main-title');
             container.innerHTML = '';
@@ -1019,7 +1253,6 @@
                     else if (c.action === 'SEDANG DITAKSIR') sedangCount++;
                     else if (c.action === 'TELAH DITAKSIR' || c.action === 'TELAH DIHANTAR') telahCount++;
                 });
-
 
                 container.className = "grid grid-cols-1 md:grid-cols-3 gap-6";
                 container.innerHTML = `
@@ -1040,7 +1273,7 @@
                     </div>
                 `;
             } else if (currentView === 'Pelaporan') {
-                mainTitle.innerText = "PELAPORAN KESELURUHAN";
+                mainTitle.innerText = "MUAT TURUN PELAPORAN";
                 container.className = "flex flex-col gap-6";
                 container.innerHTML = `
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -1068,23 +1301,33 @@
                 `;
             } else if (currentView === 'Tahun6') {
                 mainTitle.innerText = "DATA FOKUS TAHUN 6";
-                container.className = "flex flex-col gap-8";
-                
-                // Helper untuk format jadual
-                const renderTable = (fasa, kategori, title, rows) => {
-                    const d = dataFokusTahun6.find(x => x.kategori === kategori && x.fasa === fasa) || {};
+                container.className = "flex flex-col gap-6";
+
+                const isAlquran = selectedAnalisisT6Cat === 'alquran' || selectedAnalisisT6Cat === 'tasmik';
+                const isJawi = selectedAnalisisT6Cat === 'jawi';
+                const isSolat = selectedAnalisisT6Cat === 'solat';
+
+                const btnActive = "bg-indigo-600 text-white shadow-md font-bold ring-2 ring-indigo-300";
+                const btnInactive = "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 font-semibold";
+
+                const renderTable = (fasa, kategori, rows) => {
+                    const d = dataFokusTahun6.find(x => (x.kategori || 'tasmik') === kategori && x.fasa === fasa) || {};
                     return `
-                    <div class="flex-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                        <h4 class="font-bold text-center text-sm text-indigo-800 bg-indigo-50 py-2 rounded mb-3">${fasa}</h4>
+                    <div class="bg-slate-50/50 p-5 rounded-2xl border border-slate-200 shadow-sm flex-1">
+                        <h4 class="font-black text-sm text-center text-indigo-900 bg-indigo-100/70 py-2 rounded-lg mb-4 uppercase tracking-wider">${fasa}</h4>
                         <table class="w-full text-xs text-left">
                             <tbody class="divide-y divide-slate-100">
-                                <tr><td class="py-2 font-semibold">Jumlah Murid</td><td class="py-2 text-right font-bold">${d.jumlahMurid || '-'}</td></tr>
-                                ${rows.map(r => `<tr><td class="py-2">${r.label}</td><td class="py-2 text-right font-bold text-blue-600">${d[r.key] || '-'} ${r.isPct?'%':''}</td></tr>`).join('')}
+                                <tr><td class="py-2 font-semibold text-slate-700">Jumlah Murid</td><td class="py-2 text-right font-bold text-slate-900">${d.jumlahMurid || '-'}</td></tr>
+                                ${rows.map(r => `
+                                    <tr>
+                                        <td class="py-2 text-slate-600 font-medium">${r.label}</td>
+                                        <td class="py-2 text-right font-bold text-indigo-600">${d[r.key] || '-'}${r.isPct && d[r.key] && !String(d[r.key]).includes('%') ? '%' : ''}</td>
+                                    </tr>
+                                `).join('')}
                             </tbody>
                         </table>
                     </div>`;
                 };
-
 
                 const tasmikRows = [
                     {label: 'Bil. Khatam', key: 'bilKhatam'}, {label: 'Peratus Khatam', key: 'peratusKhatam', isPct: true},
@@ -1103,39 +1346,49 @@
                     {label: 'Peratus Wudhu', key: 'peratusWudhu', isPct: true}
                 ];
 
+                const catKey = isAlquran ? 'tasmik' : (isJawi ? 'jawi' : 'solat');
+                const catName = isAlquran ? 'AL-QURAN' : (isJawi ? 'JAWI' : 'SOLAT');
+                const currentRows = isAlquran ? tasmikRows : (isJawi ? jawiRows : solatRows);
 
                 container.innerHTML = `
-                    <!-- 1. TASMIK (3 FASA BERSEBELAHAN) -->
-                    <div class="border-t-4 border-blue-500 bg-white p-6 rounded-xl shadow-md">
-                        <h3 class="font-black text-blue-900 mb-4 tracking-wider uppercase text-center border-b pb-3">1. ALQURAN</h3>
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            ${renderTable('FASA 1', 'tasmik', 'ALQURAN', tasmikRows)}
-                            ${renderTable('FASA 2', 'tasmik', 'ALQURAN', tasmikRows)}
-                            ${renderTable('FASA 3', 'tasmik', 'ALQURAN', tasmikRows)}
-                        </div>
+                    <div class="bg-gradient-to-r from-indigo-900 to-purple-900 text-white p-6 rounded-2xl shadow-md">
+                        <h3 class="text-lg font-bold">DATA FOKUS TAHUN 6</h3>
+                        <p class="text-xs text-indigo-200 mt-1">Maklumat dan perincian data statistik murid Tahun 6 mengikut Fasa berdasarkan kategori yang dipilih.</p>
                     </div>
-                    <!-- 2. JAWI (3 FASA BERSEBELAHAN) -->
-                    <div class="border-t-4 border-amber-500 bg-white p-6 rounded-xl shadow-md">
-                        <h3 class="font-black text-amber-900 mb-4 tracking-wider uppercase text-center border-b pb-3">2. JAWI</h3>
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            ${renderTable('FASA 1', 'jawi', 'JAWI', jawiRows)}
-                            ${renderTable('FASA 2', 'jawi', 'JAWI', jawiRows)}
-                            ${renderTable('FASA 3', 'jawi', 'JAWI', jawiRows)}
-                        </div>
+
+                    <!-- 3 KAD DASHBOARD DI ATAS BUTANG PILIHAN KATEGORI -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        ${renderDashboardCardsHtml()}
                     </div>
-                    <!-- 3. SOLAT (3 FASA BERSEBELAHAN) -->
-                    <div class="border-t-4 border-emerald-500 bg-white p-6 rounded-xl shadow-md">
-                        <h3 class="font-black text-emerald-900 mb-4 tracking-wider uppercase text-center border-b pb-3">3. SOLAT</h3>
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            ${renderTable('FASA 1', 'solat', 'SOLAT', solatRows)}
-                            ${renderTable('FASA 2', 'solat', 'SOLAT', solatRows)}
-                            ${renderTable('FASA 3', 'solat', 'SOLAT', solatRows)}
+
+                    <!-- BUTANG PILIHAN: ALQURAN - JAWI - SOLAT -->
+                    <div class="flex flex-wrap justify-center gap-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                        <button onclick="setAnalisisT6Cat('alquran')" class="px-6 py-2.5 rounded-xl text-xs tracking-wider uppercase transition duration-200 ${isAlquran ? btnActive : btnInactive}">
+                            📖 AL-QURAN
+                        </button>
+                        <button onclick="setAnalisisT6Cat('jawi')" class="px-6 py-2.5 rounded-xl text-xs tracking-wider uppercase transition duration-200 ${isJawi ? btnActive : btnInactive}">
+                            ✍️ JAWI
+                        </button>
+                        <button onclick="setAnalisisT6Cat('solat')" class="px-6 py-2.5 rounded-xl text-xs tracking-wider uppercase transition duration-200 ${isSolat ? btnActive : btnInactive}">
+                            🕌 SOLAT
+                        </button>
+                    </div>
+
+                    <!-- PAPARAN DATA FOKUS MENGIKUT KATEGORI TERPILIH -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="text-sm font-black text-indigo-900 uppercase tracking-widest mb-4 border-b pb-3 flex items-center justify-between">
+                            <span>DATA FOKUS: ${catName}</span>
+                            <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase">3 FASA</span>
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            ${renderTable('FASA 1', catKey, currentRows)}
+                            ${renderTable('FASA 2', catKey, currentRows)}
+                            ${renderTable('FASA 3', catKey, currentRows)}
                         </div>
                     </div>
                 `;
             } else {
-                // Menjana Paparan Jadual Dinamik bagi Analisis Tasmik, Jawi, & Solat
-                const category = currentView.toLowerCase(); // 'tasmik', 'jawi', 'solat'
+                const category = currentView.toLowerCase();
                 mainTitle.innerText = currentView === 'Tasmik' ? "DATA ALQURAN" : (currentView === 'Jawi' ? "DATA JAWI" : "DATA SOLAT");
                 container.className = "flex flex-col gap-6";
                 
@@ -1146,6 +1399,7 @@
                 `;
             }
         }
+
         function searchPdfLink() {
             const tahun = document.getElementById('searchTahun').value;
             const fasa = document.getElementById('searchFasa').value;
@@ -1164,7 +1418,7 @@
                 resultDiv.innerHTML = `<p class="text-red-500 font-bold">Tiada data dijumpai bagi pilihan tersebut.</p>`;
             }
         }
-        // Mulakan inisialisasi aplikasi
+
         window.onload = function() {
             initAuthAndData();
         };
