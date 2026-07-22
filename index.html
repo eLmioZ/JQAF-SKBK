@@ -129,7 +129,7 @@
 
         let mainDonutChart = null;
         let sheetSyncInterval = null; 
-
+        let globalAutoRefreshInterval = null;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'jqaf-sk-bukit-kallam';
         const firebaseConfig = typeof __firebase_config !== 'undefined'
             ? JSON.parse(__firebase_config)
@@ -216,6 +216,30 @@
             // Memastikan paparan utama terus dirender walaupun Firebase berada dalam mod luar talian
             renderMainView();
             setupRealtimeListeners();
+            setupGlobalAutoRefresh();        }
+
+        function setupGlobalAutoRefresh() {
+            if (globalAutoRefreshInterval) clearInterval(globalAutoRefreshInterval);
+            globalAutoRefreshInterval = setInterval(async () => {
+                console.log("Auto-refresh 60 saat: Mengemas kini semua data Google Sheet...");
+                
+                // 1. Muat semula data pengurusan kelas utama jika URL wujud
+                if (configPengurusan && configPengurusan.url) {
+                    await fetchSheetData(configPengurusan.url);
+                }
+
+                // 2. Muat semula semua data analisis fasa (tasmik, jawi, solat) jika URL wujud dalam configAnalisis
+                if (configAnalisis) {
+                    ['tasmik', 'jawi', 'solat'].forEach(cat => {
+                        ['fasa1', 'fasa2', 'fasa3'].forEach(fasa => {
+                            const url = configAnalisis[cat]?.[fasa];
+                            if (url) {
+                                fetchAnalisisSheetData(cat, fasa, url);
+                            }
+                        });
+                    });
+                }
+            }, 60000); // 60,000 milisaat = 60 saat
         }
 
         function setupRealtimeListeners() {
@@ -319,14 +343,14 @@
                 const gidMatch = url.match(/gid=([0-9]+)/);
                 const gidParam = gidMatch ? `&gid=${gidMatch[1]}` : '';
                 
-                // Tetapkan julat A1:J8 khusus untuk Data Al-Quran (tasmik), A1:I8 untuk Data Jawi, dan A2:B5 khusus untuk Data Solat
+                // Tetapkan julat A1:J8 khusus untuk Data Al-Quran (tasmik), A1:I8 untuk Data Jawi, dan A1:B5 khusus untuk Data Solat
                 let rangeParam = '';
                 if (category === 'tasmik') {
                     rangeParam = '&range=A1:J8';
                 } else if (category === 'jawi') {
                     rangeParam = '&range=A1:I8';
                 } else if (category === 'solat') {
-                    rangeParam = '&range=A2:B5';
+                    rangeParam = '&range=A1:B5';
                 }
                 
                 const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&headers=1${gidParam}${rangeParam}`;
@@ -354,6 +378,8 @@
                     let sourceRows = json.table.rows;
                     if (category === 'tasmik' || category === 'jawi') {
                         sourceRows = json.table.rows.slice(0, 7);
+                    } else if (category === 'solat') {
+                        sourceRows = json.table.rows;
                     }
                     sourceRows.forEach(row => {
                         const rowData = [];
@@ -1175,54 +1201,31 @@
                 </div>`;
             }
 
-            // Jika kategori solat, paparkan sebagai kad dashboard bersiri daripada julat A2:B5
+            // Jika kategori solat, paparkan sebagai jadual standard daripada julat A1:B5
             if (category === 'solat') {
-                let jumlahMurid = '-';
-                let peratusPerlakuan = '-';
-                let peratusBacaan = '-';
-                let peratusWudhu = '-';
-
-                if (data.rows && data.rows.length > 0) {
-                    data.rows.forEach((r, idx) => {
-                        let label = (r[0] || '').toLowerCase();
-                        let val = r[1] || '-';
-                        if (idx === 0 || label.includes('jumlah') || label.includes('murid')) {
-                            jumlahMurid = val;
-                        } else if (label.includes('perlakuan') || idx === 1) {
-                            peratusPerlakuan = val;
-                        } else if (label.includes('bacaan') || idx === 2) {
-                            peratusBacaan = val;
-                        } else if (label.includes('wudhu') || label.includes('wuduk') || idx === 3) {
-                            peratusWudhu = val;
-                        }
-                    });
-                }
-
                 return `
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 border-l-4 ${accentColor} p-6">
-                    <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                        <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                            <span>🕌</span> ${title}
-                        </h3>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 border-t-4 ${accentColor} overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+                        <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">${title}</h3>
                         <span class="px-3 py-1 text-[10px] font-bold rounded-full ${badgeBg} ${textHeader} uppercase">DATA SOLAT</span>
                     </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Jumlah Murid</p>
-                            <p class="text-2xl font-black text-slate-800">${jumlahMurid}</p>
-                        </div>
-                        <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 text-center">
-                            <p class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Peratus Perlakuan</p>
-                            <p class="text-2xl font-black text-emerald-600">${peratusPerlakuan}</p>
-                        </div>
-                        <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 text-center">
-                            <p class="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1">Peratus Bacaan</p>
-                            <p class="text-2xl font-black text-blue-600">${peratusBacaan}</p>
-                        </div>
-                        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 text-center">
-                            <p class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">Peratus Wudhu</p>
-                            <p class="text-2xl font-black text-indigo-600">${peratusWudhu}</p>
-                        </div>
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-xs text-left border-collapse">
+                            <thead>
+                                <tr class="${bgHeader} border-b border-slate-200">
+                                    <th class="p-3 text-slate-700 font-extrabold uppercase whitespace-nowrap">PERKARA</th>
+                                    <th class="p-3 text-slate-700 font-extrabold uppercase whitespace-nowrap">JUMLAH</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${data.rows.map((r, i) => `
+                                    <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-indigo-50/30 transition">
+                                        <td class="p-3 font-bold text-slate-800 whitespace-nowrap">${r[0] || '-'}</td>
+                                        <td class="p-3 text-slate-600 font-semibold whitespace-nowrap">${r[1] || '-'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
                 </div>`;
             }
