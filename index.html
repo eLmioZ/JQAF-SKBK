@@ -157,6 +157,15 @@
             console.warn("Gagal menetapkan konfigurasi Firestore:", e);
         }
 
+        // Mengaktifkan local persistence supaya data boleh dibaca daripada cache jika sambungan Cloud Firestore gagal
+        db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+            if (err.code == 'failed-precondition') {
+                console.warn("Persistence gagal: Pelbagai tab dibuka serentak.");
+            } else if (err.code == 'unimplemented') {
+                console.warn("Pelayar tidak menyokong offline persistence.");
+            }
+        });
+
         const getCollectionRef = (collectionName) => {
             return db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName);
         };
@@ -210,7 +219,7 @@
         }
 
         function setupRealtimeListeners() {
-            getCollectionRef('config').doc('pengurusan').onSnapshot(async (doc) => {
+            getCollectionRef('config').doc('pengurusan').onSnapshot({ includeMetadataChanges: true }, async (doc) => {
                 if (doc.exists) {
                     configPengurusan = doc.data();
                     if (configPengurusan.url) {
@@ -224,11 +233,11 @@
                 }
                 renderMainView();
             }, err => {
-                console.warn("Firestore luar talian / tidak dapat dicapai (pengurusan):", err);
+                console.warn("Firestore luar talian / tidak dapat dicapai (pengurusan). Menggunakan data cache jika ada:", err);
                 renderMainView();
             });
 
-            getCollectionRef('dashboardCards').onSnapshot(snapshot => {
+            getCollectionRef('dashboardCards').onSnapshot({ includeMetadataChanges: true }, snapshot => {
                 dashboardCards = [];
                 snapshot.forEach(doc => {
                     dashboardCards.push({ id: doc.id, ...doc.data() });
@@ -238,7 +247,7 @@
                 console.warn("Firestore luar talian (dashboardCards):", err);
             });
 
-            getCollectionRef('config').doc('analisisJqaf').onSnapshot(doc => {
+            getCollectionRef('config').doc('analisisJqaf').onSnapshot({ includeMetadataChanges: true }, doc => {
                 if (doc.exists) {
                     configAnalisis = doc.data();
                     
@@ -259,7 +268,7 @@
                 renderMainView();
             });
 
-            getCollectionRef('statusKelasData').onSnapshot(snapshot => {
+            getCollectionRef('statusKelasData').onSnapshot({ includeMetadataChanges: true }, snapshot => {
                 statusKelasData = [];
                 snapshot.forEach(doc => {
                     statusKelasData.push({ id: doc.id, ...doc.data() });
@@ -269,7 +278,7 @@
                 console.warn("Firestore luar talian (statusKelasData):", err);
             });
 
-            getCollectionRef('dataFokusTahun6').onSnapshot(snapshot => {
+            getCollectionRef('dataFokusTahun6').onSnapshot({ includeMetadataChanges: true }, snapshot => {
                 dataFokusTahun6 = [];
                 snapshot.forEach(doc => {
                     dataFokusTahun6.push({ id: doc.id, ...doc.data() });
@@ -279,7 +288,7 @@
                 console.warn("Firestore luar talian (dataFokusTahun6):", err);
             });
 
-            getCollectionRef('hebahanList').onSnapshot(snapshot => {
+            getCollectionRef('hebahanList').onSnapshot({ includeMetadataChanges: true }, snapshot => {
                 hebahanList = [];
                 snapshot.forEach(doc => {
                     hebahanList.push({ id: doc.id, ...doc.data() });
@@ -289,7 +298,7 @@
                 console.warn("Firestore luar talian (hebahanList):", err);
             });
 
-            getCollectionRef('pelaporanLinks').onSnapshot(snapshot => {
+            getCollectionRef('pelaporanLinks').onSnapshot({ includeMetadataChanges: true }, snapshot => {
                 pelaporanLinks = [];
                 snapshot.forEach(doc => {
                     pelaporanLinks.push({ id: doc.id, ...doc.data() });
@@ -310,8 +319,15 @@
                 const gidMatch = url.match(/gid=([0-9]+)/);
                 const gidParam = gidMatch ? `&gid=${gidMatch[1]}` : '';
                 
-                // Tetapkan julat A1:J8 khusus untuk Data Al-Quran (tasmik)
-                const rangeParam = (category === 'tasmik') ? '&range=A1:J8' : '';
+                // Tetapkan julat A1:J8 khusus untuk Data Al-Quran (tasmik), A1:I8 untuk Data Jawi, dan A2:B5 khusus untuk Data Solat
+                let rangeParam = '';
+                if (category === 'tasmik') {
+                    rangeParam = '&range=A1:J8';
+                } else if (category === 'jawi') {
+                    rangeParam = '&range=A1:I8';
+                } else if (category === 'solat') {
+                    rangeParam = '&range=A2:B5';
+                }
                 
                 const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&headers=1${gidParam}${rangeParam}`;
                 const res = await fetch(fetchUrl);
@@ -321,8 +337,13 @@
                 const json = JSON.parse(jsonStr);
 
                 const headers = [];
-                if (json.table.cols) {
-                    const cols = (category === 'tasmik') ? json.table.cols.slice(0, 10) : json.table.cols;
+                if (json.table.cols && category !== 'solat') {
+                    let cols = json.table.cols;
+                    if (category === 'tasmik') {
+                        cols = json.table.cols.slice(0, 10);
+                    } else if (category === 'jawi') {
+                        cols = json.table.cols.slice(0, 9);
+                    }
                     cols.forEach(col => {
                         headers.push(col.label || '');
                     });
@@ -330,11 +351,21 @@
 
                 const rows = [];
                 if (json.table.rows) {
-                    const sourceRows = (category === 'tasmik') ? json.table.rows.slice(0, 7) : json.table.rows;
+                    let sourceRows = json.table.rows;
+                    if (category === 'tasmik' || category === 'jawi') {
+                        sourceRows = json.table.rows.slice(0, 7);
+                    }
                     sourceRows.forEach(row => {
                         const rowData = [];
                         if (row.c) {
-                            const cells = (category === 'tasmik') ? row.c.slice(0, 10) : row.c;
+                            let cells = row.c;
+                            if (category === 'tasmik') {
+                                cells = row.c.slice(0, 10);
+                            } else if (category === 'jawi') {
+                                cells = row.c.slice(0, 9);
+                            } else if (category === 'solat') {
+                                cells = row.c.slice(0, 2);
+                            }
                             cells.forEach(cell => {
                                 let val = '';
                                 if (cell) {
@@ -347,7 +378,7 @@
                                 rowData.push(val);
                             });
                         }
-                        if (isRowFilled(rowData)) {
+                        if (category === 'solat' || isRowFilled(rowData)) {
                             rows.push(rowData);
                         }
                     });
@@ -1135,15 +1166,63 @@
             const data = analisisData[category]?.[fasa];
             if (!data) {
                 return `
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 border-t-4 ${accentColor} overflow-hidden">
-                    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 border-l-4 ${accentColor} overflow-hidden p-6">
+                    <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">${title}</h3>
                         <span class="px-3 py-1 text-[10px] font-bold rounded-full ${badgeBg} ${textHeader} uppercase">${category}</span>
                     </div>
-                    <div class="p-8 text-center flex flex-col items-center justify-center">
-                        <svg class="w-12 h-12 text-slate-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <p class="text-slate-400 text-sm font-medium">Menunggu muat turun data Google Sheet...</p>
-                        <p class="text-slate-400 text-xs mt-1">Sila pastikan pautan URL betul dan diset kepada "Anyone with the link can view".</p>
+                    <p class="text-slate-400 text-xs italic">Data belum diproses...</p>
+                </div>`;
+            }
+
+            // Jika kategori solat, paparkan sebagai kad dashboard bersiri daripada julat A2:B5
+            if (category === 'solat') {
+                let jumlahMurid = '-';
+                let peratusPerlakuan = '-';
+                let peratusBacaan = '-';
+                let peratusWudhu = '-';
+
+                if (data.rows && data.rows.length > 0) {
+                    data.rows.forEach((r, idx) => {
+                        let label = (r[0] || '').toLowerCase();
+                        let val = r[1] || '-';
+                        if (idx === 0 || label.includes('jumlah') || label.includes('murid')) {
+                            jumlahMurid = val;
+                        } else if (label.includes('perlakuan') || idx === 1) {
+                            peratusPerlakuan = val;
+                        } else if (label.includes('bacaan') || idx === 2) {
+                            peratusBacaan = val;
+                        } else if (label.includes('wudhu') || label.includes('wuduk') || idx === 3) {
+                            peratusWudhu = val;
+                        }
+                    });
+                }
+
+                return `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 border-l-4 ${accentColor} p-6">
+                    <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                        <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                            <span>🕌</span> ${title}
+                        </h3>
+                        <span class="px-3 py-1 text-[10px] font-bold rounded-full ${badgeBg} ${textHeader} uppercase">DATA SOLAT</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Jumlah Murid</p>
+                            <p class="text-2xl font-black text-slate-800">${jumlahMurid}</p>
+                        </div>
+                        <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 text-center">
+                            <p class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Peratus Perlakuan</p>
+                            <p class="text-2xl font-black text-emerald-600">${peratusPerlakuan}</p>
+                        </div>
+                        <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 text-center">
+                            <p class="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1">Peratus Bacaan</p>
+                            <p class="text-2xl font-black text-blue-600">${peratusBacaan}</p>
+                        </div>
+                        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 text-center">
+                            <p class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">Peratus Wudhu</p>
+                            <p class="text-2xl font-black text-indigo-600">${peratusWudhu}</p>
+                        </div>
                     </div>
                 </div>`;
             }
@@ -1411,7 +1490,7 @@
                 resultDiv.innerHTML = `
                     <div class="bg-emerald-50 border border-emerald-200 p-6 rounded-xl text-center">
                         <p class="text-emerald-800 font-bold mb-2">Data Ditemui untuk ${tahun} - ${fasa}</p>
-                        <a href="${found.url}" target="_blank" class="text-blue-600 font-bold underline text-lg">KLIK UNTUK BUKA DOKUMEN PDF/SHEET</a>
+                        <a href="${found.url}" target="_blank" class="text-blue-600 font-bold underline text-lg">KLIK UNTUK BUKA DOKUMEN, TERIMA KASIH</a>
                     </div>
                 `;
             } else {
